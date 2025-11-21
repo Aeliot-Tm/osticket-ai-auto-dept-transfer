@@ -248,28 +248,74 @@ class AIAutoDeptTransferAnalyzer {
      * Extract text from Word document
      */
     private function extractTextFromWord($file) {
-        // Try using antiword for .doc files or unzip for .docx
-        if (function_exists('shell_exec')) {
-            $tmpfile = tempnam(sys_get_temp_dir(), 'doc_');
-            file_put_contents($tmpfile, $file->getData());
+        if (!function_exists('shell_exec')) {
+            if ($this->config->get('enable_logging')) {
+                error_log("Auto Dept Transfer - shell_exec not available");
+            }
+            return null;
+        }
+        
+        $tmpfile = tempnam(sys_get_temp_dir(), 'doc_');
+        file_put_contents($tmpfile, $file->getData());
+        
+        $output = '';
+        $mime_type = $file->getType();
+        
+        // Try antiword for .doc files
+        if (stripos($mime_type, 'msword') !== false || 
+            (stripos($mime_type, 'application') !== false && !stripos($mime_type, 'officedocument'))) {
             
-            // Try antiword first
+            if ($this->config->get('enable_logging')) {
+                error_log("Auto Dept Transfer - Trying antiword for .doc file");
+            }
+            
             $output = shell_exec("antiword '$tmpfile' 2>/dev/null");
+        }
+        
+        // Try extracting .docx (Office Open XML)
+        if (empty(trim($output)) && (
+            stripos($mime_type, 'wordprocessingml') !== false || 
+            stripos($mime_type, 'officedocument') !== false)) {
             
-            if (!$output || empty(trim($output))) {
-                // Try extracting .docx
-                $output = shell_exec("unzip -p '$tmpfile' word/document.xml 2>/dev/null | sed 's/<[^>]*>//g'");
+            if ($this->config->get('enable_logging')) {
+                error_log("Auto Dept Transfer - Trying unzip for .docx file");
             }
             
-            unlink($tmpfile);
+            // Create temp directory for extraction
+            $tmpdir = sys_get_temp_dir() . '/docx_' . uniqid();
+            mkdir($tmpdir);
             
-            if ($output && !empty(trim($output))) {
-                return $output;
+            // Extract document.xml
+            shell_exec("unzip -q -d '$tmpdir' '$tmpfile' word/document.xml 2>/dev/null");
+            
+            $xml_file = $tmpdir . '/word/document.xml';
+            if (file_exists($xml_file)) {
+                $xml_content = file_get_contents($xml_file);
+                
+                // Remove XML tags and extract text
+                // This regex preserves text content while removing tags
+                $text = preg_replace('/<[^>]+>/', ' ', $xml_content);
+                
+                // Clean up whitespace
+                $text = preg_replace('/\s+/', ' ', $text);
+                $output = trim($text);
             }
+            
+            // Clean up temp directory
+            shell_exec("rm -rf '$tmpdir'");
+        }
+        
+        unlink($tmpfile);
+        
+        if ($output && !empty(trim($output))) {
+            if ($this->config->get('enable_logging')) {
+                error_log("Auto Dept Transfer - Successfully extracted " . strlen($output) . " bytes from Word document");
+            }
+            return $output;
         }
         
         if ($this->config->get('enable_logging')) {
-            error_log("Auto Dept Transfer - Word extraction not available");
+            error_log("Auto Dept Transfer - Word extraction failed for mime type: $mime_type");
         }
         
         return null;
