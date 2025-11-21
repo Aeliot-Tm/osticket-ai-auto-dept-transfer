@@ -245,7 +245,7 @@ class AIAutoDeptTransferAnalyzer {
     }
     
     /**
-     * Extract text from Word document
+     * Extract text from Word document (.doc and .docx)
      */
     private function extractTextFromWord($file) {
         if (!function_exists('shell_exec')) {
@@ -261,24 +261,69 @@ class AIAutoDeptTransferAnalyzer {
         $output = '';
         $mime_type = $file->getType();
         
-        // Try antiword for .doc files
-        if (stripos($mime_type, 'msword') !== false || 
-            (stripos($mime_type, 'application') !== false && !stripos($mime_type, 'officedocument'))) {
-            
+        // Get filename to check extension as fallback
+        $filename = method_exists($file, 'getName') ? $file->getName() : '';
+        if (!$filename && isset($file->filename)) {
+            $filename = $file->filename;
+        }
+        
+        $extension = strtolower(pathinfo($filename, PATHINFO_EXTENSION));
+        
+        if ($this->config->get('enable_logging')) {
+            error_log("Auto Dept Transfer - Processing Word file: $filename (mime: $mime_type, ext: $extension)");
+        }
+        
+        // Determine if it's .doc or .docx based on MIME type and extension
+        $is_doc_legacy = (
+            stripos($mime_type, 'msword') !== false && 
+            stripos($mime_type, 'officedocument') === false
+        ) || $extension === 'doc';
+        
+        $is_docx = (
+            stripos($mime_type, 'wordprocessingml') !== false || 
+            stripos($mime_type, 'officedocument') !== false
+        ) || $extension === 'docx';
+        
+        // Try antiword for legacy .doc files
+        if ($is_doc_legacy) {
             if ($this->config->get('enable_logging')) {
-                error_log("Auto Dept Transfer - Trying antiword for .doc file");
+                error_log("Auto Dept Transfer - Detected legacy .doc file, trying antiword");
             }
             
             $output = shell_exec("antiword '$tmpfile' 2>/dev/null");
+            
+            if (!empty(trim($output))) {
+                if ($this->config->get('enable_logging')) {
+                    error_log("Auto Dept Transfer - Successfully extracted " . strlen($output) . " bytes using antiword");
+                }
+            } else {
+                // Try catdoc as alternative
+                if ($this->config->get('enable_logging')) {
+                    error_log("Auto Dept Transfer - antiword failed, trying catdoc");
+                }
+                $output = shell_exec("catdoc '$tmpfile' 2>/dev/null");
+                
+                if (!empty(trim($output))) {
+                    if ($this->config->get('enable_logging')) {
+                        error_log("Auto Dept Transfer - Successfully extracted " . strlen($output) . " bytes using catdoc");
+                    }
+                } else {
+                    if ($this->config->get('enable_logging')) {
+                        error_log("Auto Dept Transfer - Both antiword and catdoc failed, trying .docx format as fallback");
+                    }
+                    // Mark as potential .docx for fallback attempt
+                    $is_docx = true;
+                }
+            }
         }
         
-        // Try extracting .docx (Office Open XML)
-        if (empty(trim($output)) && (
-            stripos($mime_type, 'wordprocessingml') !== false || 
-            stripos($mime_type, 'officedocument') !== false)) {
-            
+        // Try extracting .docx (Office Open XML) if:
+        // 1. Detected as .docx format, OR
+        // 2. .doc extraction failed (fallback), OR  
+        // 3. Format couldn't be determined
+        if (empty(trim($output)) && ($is_docx || !$is_doc_legacy)) {
             if ($this->config->get('enable_logging')) {
-                error_log("Auto Dept Transfer - Trying unzip for .docx file");
+                error_log("Auto Dept Transfer - Trying to extract as .docx using unzip");
             }
             
             // Create temp directory for extraction
@@ -299,6 +344,16 @@ class AIAutoDeptTransferAnalyzer {
                 // Clean up whitespace
                 $text = preg_replace('/\s+/', ' ', $text);
                 $output = trim($text);
+                
+                if (!empty($output)) {
+                    if ($this->config->get('enable_logging')) {
+                        error_log("Auto Dept Transfer - Successfully extracted " . strlen($output) . " bytes from .docx");
+                    }
+                }
+            } else {
+                if ($this->config->get('enable_logging')) {
+                    error_log("Auto Dept Transfer - Failed to extract document.xml from .docx");
+                }
             }
             
             // Clean up temp directory
@@ -308,14 +363,11 @@ class AIAutoDeptTransferAnalyzer {
         unlink($tmpfile);
         
         if ($output && !empty(trim($output))) {
-            if ($this->config->get('enable_logging')) {
-                error_log("Auto Dept Transfer - Successfully extracted " . strlen($output) . " bytes from Word document");
-            }
             return $output;
         }
         
         if ($this->config->get('enable_logging')) {
-            error_log("Auto Dept Transfer - Word extraction failed for mime type: $mime_type");
+            error_log("Auto Dept Transfer - Failed to extract text from Word document (mime: $mime_type, ext: $extension)");
         }
         
         return null;
