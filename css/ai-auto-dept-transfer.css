@@ -3,21 +3,21 @@
  */
 
 /* Button styles - minimal override for icon-only button */
-.auto-dept-transfer-btn {
+.ai-auto-dept-transfer-btn {
     cursor: pointer;
 }
 
-.auto-dept-transfer-btn:disabled {
+.ai-auto-dept-transfer-btn:disabled {
     cursor: not-allowed;
     opacity: 0.5;
 }
 
-.auto-dept-transfer-btn i {
+.ai-auto-dept-transfer-btn i {
     margin-right: 0;
 }
 
 /* Alert notifications */
-.auto-dept-transfer-alert {
+.ai-auto-dept-transfer-alert {
     margin: 15px 0;
     padding: 12px 20px;
     border-radius: 4px;
@@ -26,38 +26,38 @@
     box-shadow: 0 2px 4px rgba(0,0,0,0.1);
 }
 
-.auto-dept-transfer-alert.alert-success {
+.ai-auto-dept-transfer-alert.alert-success {
     border-left-color: #27ae60;
     background-color: #d5f4e6;
     color: #1e8449;
 }
 
-.auto-dept-transfer-alert.alert-danger,
-.auto-dept-transfer-alert.alert-error {
+.ai-auto-dept-transfer-alert.alert-danger,
+.ai-auto-dept-transfer-alert.alert-error {
     border-left-color: #e74c3c;
     background-color: #fadbd8;
     color: #c0392b;
 }
 
-.auto-dept-transfer-alert.alert-warning {
+.ai-auto-dept-transfer-alert.alert-warning {
     border-left-color: #f39c12;
     background-color: #fcf3cf;
     color: #935b0a;
 }
 
-.auto-dept-transfer-alert.alert-info {
+.ai-auto-dept-transfer-alert.alert-info {
     border-left-color: #3498db;
     background-color: #d6eaf8;
     color: #21618c;
 }
 
-.auto-dept-transfer-alert strong {
+.ai-auto-dept-transfer-alert strong {
     font-weight: 600;
 }
 
 /* Responsive adjustments */
 @media (max-width: 768px) {
-    .auto-dept-transfer-alert {
+    .ai-auto-dept-transfer-alert {
         padding: 10px 15px;
         font-size: 13px;
     }

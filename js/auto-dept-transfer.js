@@ -18,12 +18,12 @@
         if (type === 'error') alertClass = 'alert-danger';
         
         var $alert = $('<div>')
-            .addClass('alert ' + alertClass + ' auto-dept-transfer-alert')
+            .addClass('alert ' + alertClass + ' ai-auto-dept-transfer-alert')
             .html('<strong>' + (type === 'error' ? 'Error: ' : '') + '</strong> ' + message)
             .hide();
         
         // Remove any existing alerts
-        $('.auto-dept-transfer-alert').remove();
+        $('.ai-auto-dept-transfer-alert').remove();
         
         // Insert at top of page
         $('#content').prepend($alert);
@@ -43,7 +43,7 @@
      * Analyze ticket and transfer if needed
      */
     function analyzeTicket() {
-        var $button = $('.auto-dept-transfer-btn');
+        var $button = $('.ai-auto-dept-transfer-btn');
         var originalHtml = $button.html();
         
         // Disable button and show loading state
@@ -125,7 +125,7 @@
             
             // Create button (compact icon-only style)
             var $button = $('<a>')
-                .addClass('action-button pull-right auto-dept-transfer-btn')
+                .addClass('action-button pull-right ai-auto-dept-transfer-btn')
                 .attr({
                     'type': 'button',
                     'data-placement': 'bottom',

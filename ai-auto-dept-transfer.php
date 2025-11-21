@@ -246,7 +246,7 @@ class AIAutoDeptTransferPlugin extends Plugin {
         
         // Load CSS
         echo '<style type="text/css">';
-        @readfile($path . '/css/auto-dept-transfer.css');
+        @readfile($path . '/css/ai-auto-dept-transfer.css');
         echo '</style>';
         
         // Pass config to JavaScript
