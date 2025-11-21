@@ -103,6 +103,23 @@ class AIAutoDeptTransferConfig extends PluginConfig {
 
     function getOptions() {
         return array(
+            'dept_rules' => new AIAutoDeptTransferRulesField(array(
+                'label' => __('Department Transfer Rules'),
+                'required' => false,
+                'default' => '[]',
+                'hint' => __('Configure department transfer rules. Use the table below to add departments and keywords.')
+            )),
+            'max_file_size' => new TextboxField(array(
+                'label' => __('Max File Size (MB)'),
+                'default' => '10',
+                'required' => true,
+                'validator' => 'number',
+                'configuration' => array(
+                        'size' => 10,
+                        'length' => 3
+                ),
+                'hint' => __('Maximum file size to process for text extraction')
+            )),
             'api_key' => new TextboxField(array(
                 'label' => __('OpenAI API Key'),
                 'required' => true,
@@ -135,45 +152,28 @@ class AIAutoDeptTransferConfig extends PluginConfig {
                 ),
                 'hint' => __('Maximum time to wait for OpenAI response')
             )),
-            'enable_logging' => new BooleanField(array(
-                'label' => __('Enable Debug Logging'),
-                'default' => false,
-                'configuration' => array(
-                    'desc' => __('Log processing details and AI requests for debugging')
-                )
-            )),
             'auto_transfer' => new BooleanField(array(
                 'label' => __('Auto-transfer on ticket creation'),
                 'default' => true,
                 'configuration' => array(
-                    'desc' => __('Automatically analyze and transfer new tickets')
+                        'desc' => __('Automatically analyze and transfer new tickets')
                 )
-            )),
-            'max_file_size' => new TextboxField(array(
-                'label' => __('Max File Size (MB)'),
-                'default' => '10',
-                'required' => true,
-                'validator' => 'number',
-                'configuration' => array(
-                    'size' => 10,
-                    'length' => 3
-                ),
-                'hint' => __('Maximum file size to process for text extraction')
-            )),
-            'dept_rules' => new AIAutoDeptTransferRulesField(array(
-                'label' => __('Department Transfer Rules'),
-                'required' => false,
-                'default' => '[]',
-                'hint' => __('Configure department transfer rules. Use the table below to add departments and keywords.')
             )),
             'allowed_depts' => new AIAutoDeptTransferDepartmentMultiselectField(array(
                 'label' => __('Departments with Manual Transfer Button'),
                 'required' => false,
                 'default' => [],
                 'configuration' => array(
-                    'multiselect' => true
+                        'multiselect' => true
                 ),
                 'hint' => __('Select departments that can see the manual transfer button. Leave empty to show for all departments (including future ones).')
+            )),
+            'enable_logging' => new BooleanField(array(
+                'label' => __('Enable Debug Logging'),
+                'default' => false,
+                'configuration' => array(
+                    'desc' => __('Log processing details and AI requests for debugging')
+                )
             ))
         );
     }
