@@ -294,8 +294,10 @@ class AIAutoDeptTransferAnalyzer {
             $dept_id = intval($rule['dept_id']);
             $keywords = $rule['keywords'];
             
-            // Parse keywords (comma-separated)
-            $keyword_list = array_map('trim', explode(',', $keywords));
+            // Parse keywords (comma or semicolon separated)
+            $keyword_list = preg_split('/[,;]/', $keywords);
+            $keyword_list = array_map('trim', $keyword_list);
+            $keyword_list = array_filter($keyword_list); // Remove empty values
             $found_keywords = array();
             
             foreach ($keyword_list as $keyword) {

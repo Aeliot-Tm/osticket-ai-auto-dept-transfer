@@ -58,12 +58,13 @@
 
 | Department | Keywords |
 |-----------|----------|
-| Technical Support | password, login, authentication, forgot password |
+| Technical Support | password; login; authentication; forgot password |
 | Billing | payment, invoice, billing, refund, subscription |
-| Bug Reports | bug, error, crash, not working, broken |
+| Bug Reports | bug; error; crash; not working; broken |
 
 **Формат ключевых слов:**
-- Разделяются запятыми
+- Разделяются запятыми или точкой с запятой (`,` или `;`)
+- Пробелы после разделителя автоматически удаляются
 - Регистронезависимый поиск
 - Частичное совпадение в тексте
 - Можно использовать несколько слов для одного отдела
