@@ -113,19 +113,27 @@
     function init() {
         // Wait for DOM to be ready
         $(document).ready(function() {
-            // Find ticket actions area
-            var $ticketActions = $('#ticket-actions, .ticket-actions, .actions');
+            // Find the Transfer button
+            var $transferButton = $('#ticket-transfer');
             
-            // If not found, try alternative locations
-            if (!$ticketActions.length) {
-                $ticketActions = $('.pull-left.flush-left').first();
+            if (!$transferButton.length) {
+                if (config.enable_logging) {
+                    console.log('Auto Dept Transfer - Transfer button not found');
+                }
+                return;
             }
             
-            // Create button
-            var $button = $('<button>')
-                .addClass('action-button auto-dept-transfer-btn')
-                .attr('type', 'button')
-                .html('<i class="icon-exchange"></i> Auto Transfer Department')
+            // Create button (compact icon-only style)
+            var $button = $('<a>')
+                .addClass('action-button pull-right auto-dept-transfer-btn')
+                .attr({
+                    'type': 'button',
+                    'data-placement': 'bottom',
+                    'data-toggle': 'tooltip',
+                    'title': 'Auto Transfer Department',
+                    'href': '#'
+                })
+                .html('<i class="icon-exchange"></i>')
                 .on('click', function(e) {
                     e.preventDefault();
                     if (confirm('Analyze this ticket and transfer to appropriate department?')) {
@@ -133,15 +141,12 @@
                     }
                 });
             
-            // Try to insert button in ticket actions
-            if ($ticketActions.length) {
-                $ticketActions.append($button);
-            } else {
-                // Fallback: try to find ticket header or any action area
-                var $header = $('h2:contains("Ticket")').first();
-                if ($header.length) {
-                    $header.after($('<div>').addClass('auto-dept-transfer-container').append($button));
-                }
+            // Insert button right after Transfer button (before in DOM due to pull-right float)
+            $transferButton.before($button);
+            
+            // Initialize tooltip if osTicket has it
+            if (typeof $button.tooltip === 'function') {
+                $button.tooltip();
             }
             
             if (config.enable_logging) {
