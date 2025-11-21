@@ -5,6 +5,40 @@ require_once(INCLUDE_DIR . 'class.signal.php');
 require_once(INCLUDE_DIR . 'class.dispatcher.php');
 require_once('config.php');
 
+/**
+ * @return AIAutoDeptTransferConfig
+ */
+function get_plugin_ai_auto_dept_transfer() {
+    // Get plugin instance
+    $plugin = null;
+    $installed_plugins = PluginManager::allInstalled();
+
+    foreach ($installed_plugins as $path => $info) {
+        if (is_object($info)) {
+            $manifest = isset($info->info) ? $info->info : array();
+            if (isset($manifest['id']) && $manifest['id'] == 'osticket:ai-auto-dept-transfer') {
+                $plugin = $info;
+                break;
+            }
+        } elseif (is_array($info)) {
+            if (isset($info['id']) && $info['id'] == 'osticket:ai-auto-dept-transfer') {
+                $plugin = PluginManager::getInstance($path);
+                break;
+            }
+        }
+    }
+
+    if (!$plugin) {
+        $plugin = PluginManager::getInstance('plugins/ai-auto-dept-transfer');
+    }
+
+    if (!$plugin || !is_a($plugin, 'Plugin')) {
+        throw new DomainException('Plugin instance not found');
+    }
+
+    return $plugin;
+}
+
 // --- ГЛОБАЛЬНЫЕ ФУНКЦИИ-ОБРАБОТЧИКИ ---
 
 function ai_auto_dept_transfer_handle_analyze() {
@@ -33,39 +67,6 @@ function ai_auto_dept_transfer_handle_analyze() {
     }
     
     try {
-        // Get plugin instance
-        $plugin = null;
-        $installed_plugins = PluginManager::allInstalled();
-        
-        foreach ($installed_plugins as $path => $info) {
-            if (is_object($info)) {
-                $manifest = isset($info->info) ? $info->info : array();
-                if (isset($manifest['id']) && $manifest['id'] == 'osticket:ai-auto-dept-transfer') {
-                    $plugin = $info;
-                    break;
-                }
-            } elseif (is_array($info)) {
-                if (isset($info['id']) && $info['id'] == 'osticket:ai-auto-dept-transfer') {
-                    $plugin = PluginManager::getInstance($path);
-                    break;
-                }
-            }
-        }
-        
-        if (!$plugin) {
-            $plugin = PluginManager::getInstance('plugins/ai-auto-dept-transfer');
-        }
-        
-        if (!$plugin || !is_a($plugin, 'Plugin')) {
-            throw new Exception('Plugin instance not found');
-        }
-
-        /**
-         * Get active instance config
-         * @var AIAutoDeptTransferConfig $plugin
-         */
-        $config = $plugin->getConfig();
-        
         if (!class_exists('Ticket')) {
             require_once(INCLUDE_DIR . 'class.ticket.php');
         }
@@ -78,7 +79,10 @@ function ai_auto_dept_transfer_handle_analyze() {
         if (!class_exists('AIAutoDeptTransferAnalyzer')) {
             throw new Exception('Class TransferAnalyzer not found');
         }
-        
+
+        //Get active instance config
+        $config = get_plugin_ai_auto_dept_transfer()->getConfig();
+
         // Analyze ticket
         $analyzer = new AIAutoDeptTransferAnalyzer($config);
         $result = $analyzer->analyzeTicket($ticket_id);
