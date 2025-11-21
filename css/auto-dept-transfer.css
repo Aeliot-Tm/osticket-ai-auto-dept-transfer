@@ -1,0 +1,128 @@
+/**
+ * Auto Department Transfer - Styles
+ */
+
+/* Button styles */
+.auto-dept-transfer-btn {
+    background: linear-gradient(to bottom, #4a90e2 0%, #357abd 100%);
+    border: 1px solid #2a5a8a;
+    color: #ffffff !important;
+    padding: 6px 12px;
+    font-size: 13px;
+    border-radius: 3px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    margin-left: 5px;
+    display: inline-block;
+    text-decoration: none;
+    font-weight: normal;
+}
+
+.auto-dept-transfer-btn:hover {
+    background: linear-gradient(to bottom, #357abd 0%, #2a5a8a 100%);
+    border-color: #1f4366;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+}
+
+.auto-dept-transfer-btn:active {
+    background: #2a5a8a;
+    box-shadow: inset 0 2px 4px rgba(0,0,0,0.3);
+}
+
+.auto-dept-transfer-btn:disabled {
+    background: #95a5a6 !important;
+    border-color: #7f8c8d !important;
+    cursor: not-allowed;
+    opacity: 0.6;
+}
+
+.auto-dept-transfer-btn i {
+    margin-right: 4px;
+}
+
+/* Container for button when not in actions area */
+.auto-dept-transfer-container {
+    margin: 10px 0;
+    padding: 10px;
+    background: #f8f9fa;
+    border-radius: 4px;
+}
+
+/* Alert notifications */
+.auto-dept-transfer-alert {
+    margin: 15px 0;
+    padding: 12px 20px;
+    border-radius: 4px;
+    border-left: 4px solid;
+    background: #ffffff;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.auto-dept-transfer-alert.alert-success {
+    border-left-color: #27ae60;
+    background-color: #d5f4e6;
+    color: #1e8449;
+}
+
+.auto-dept-transfer-alert.alert-danger,
+.auto-dept-transfer-alert.alert-error {
+    border-left-color: #e74c3c;
+    background-color: #fadbd8;
+    color: #c0392b;
+}
+
+.auto-dept-transfer-alert.alert-warning {
+    border-left-color: #f39c12;
+    background-color: #fcf3cf;
+    color: #935b0a;
+}
+
+.auto-dept-transfer-alert.alert-info {
+    border-left-color: #3498db;
+    background-color: #d6eaf8;
+    color: #21618c;
+}
+
+.auto-dept-transfer-alert strong {
+    font-weight: 600;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .auto-dept-transfer-btn {
+        font-size: 12px;
+        padding: 5px 10px;
+        margin-top: 5px;
+        display: block;
+        width: 100%;
+    }
+    
+    .auto-dept-transfer-alert {
+        padding: 10px 15px;
+        font-size: 13px;
+    }
+}
+
+/* Integration with osTicket styles */
+#ticket-actions .auto-dept-transfer-btn,
+.ticket-actions .auto-dept-transfer-btn {
+    vertical-align: middle;
+}
+
+/* Loading animation for button */
+.auto-dept-transfer-btn:disabled::after {
+    content: '';
+    display: inline-block;
+    width: 12px;
+    height: 12px;
+    margin-left: 5px;
+    border: 2px solid #ffffff;
+    border-radius: 50%;
+    border-top-color: transparent;
+    animation: auto-dept-transfer-spin 0.6s linear infinite;
+}
+
+@keyframes auto-dept-transfer-spin {
+    to { transform: rotate(360deg); }
+}
+
