@@ -82,13 +82,16 @@ When "Auto-transfer on ticket creation" is enabled, the plugin automatically:
 
 ### Manual Trigger
 
-An **"Auto Transfer Department"** button appears in the ticket view:
+An **"Auto Transfer Department"** option appears in the "More" dropdown menu in the ticket view:
 1. Open a ticket
-2. Click the "Auto Transfer Department" button
-3. Confirm the action
-4. The plugin will analyze and transfer the ticket if needed
+2. Click the **"More"** button (with three dots) in the ticket toolbar
+3. Select **"Auto Transfer Department"** from the dropdown menu
+4. Confirm the action
+5. The plugin will analyze and transfer the ticket if needed
 
-![Manual button](docs/images/img.png)
+The menu item is marked with an exchange icon (⇄) and appears at the top of the dropdown list.
+
+![More dropdown button](docs/images/more-dropdown-button.png)
 
 ## Logic
 

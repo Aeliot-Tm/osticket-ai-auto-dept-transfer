@@ -43,11 +43,13 @@
      * Analyze ticket and transfer if needed
      */
     function analyzeTicket() {
-        var $button = $('.ai-auto-dept-transfer-btn');
-        var originalHtml = $button.html();
+        var $menuItem = $('.ai-auto-dept-transfer-menu-item');
+        var originalHtml = $menuItem.html();
         
-        // Disable button and show loading state
-        $button.prop('disabled', true).html('<i class="icon-refresh icon-spin"></i> Analyzing...');
+        // Disable menu item and show loading state
+        $menuItem.addClass('disabled')
+            .css('pointer-events', 'none')
+            .html('<i class="icon-refresh icon-spin"></i> Analyzing...');
         
         $.ajax({
             url: config.ajax_url + '/analyze',
@@ -101,8 +103,10 @@
                 );
             },
             complete: function() {
-                // Re-enable button
-                $button.prop('disabled', false).html(originalHtml);
+                // Re-enable menu item
+                $menuItem.removeClass('disabled')
+                    .css('pointer-events', '')
+                    .html(originalHtml);
             }
         });
     }
@@ -113,44 +117,33 @@
     function init() {
         // Wait for DOM to be ready
         $(document).ready(function() {
-            // Find the Transfer button
-            var $transferButton = $('#ticket-transfer');
+            // Find the "More" dropdown menu
+            var $dropdown = $('#action-dropdown-more ul');
             
-            if (!$transferButton.length) {
+            if (!$dropdown.length) {
                 if (config.enable_logging) {
-                    console.log('Auto Dept Transfer - Transfer button not found');
+                    console.log('Auto Dept Transfer - More dropdown not found');
                 }
                 return;
             }
             
-            // Create button (compact icon-only style)
-            var $button = $('<a>')
-                .addClass('action-button pull-right ai-auto-dept-transfer-btn')
-                .attr({
-                    'type': 'button',
-                    'data-placement': 'bottom',
-                    'data-toggle': 'tooltip',
-                    'title': 'Auto Transfer Department',
-                    'href': '#'
-                })
-                .html('<i class="icon-exchange"></i>')
-                .on('click', function(e) {
-                    e.preventDefault();
-                    if (confirm('Analyze this ticket and transfer to appropriate department?')) {
-                        analyzeTicket();
-                    }
-                });
+            // Create menu item in the same format as other items in the dropdown
+            var $menuItem = $('<li>')
+                .html('<a href="#" class="ai-auto-dept-transfer-menu-item"><i class="icon-exchange"></i> Auto Transfer Department</a>');
             
-            // Insert button right after Transfer button (before in DOM due to pull-right float)
-            $transferButton.before($button);
+            // Add click handler to the link
+            $menuItem.find('a').on('click', function(e) {
+                e.preventDefault();
+                if (confirm('Analyze this ticket and transfer to appropriate department?')) {
+                    analyzeTicket();
+                }
+            });
             
-            // Initialize tooltip if osTicket has it
-            if (typeof $button.tooltip === 'function') {
-                $button.tooltip();
-            }
+            // Insert as first item in the dropdown
+            $dropdown.prepend($menuItem);
             
             if (config.enable_logging) {
-                console.log('Auto Dept Transfer - UI initialized');
+                console.log('Auto Dept Transfer - UI initialized in More dropdown');
             }
         });
     }
