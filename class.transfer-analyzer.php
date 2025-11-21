@@ -222,23 +222,34 @@ class AIAutoDeptTransferAnalyzer {
      * Extract text from PDF
      */
     private function extractTextFromPDF($file) {
-        // Try using pdftotext if available
-        if (function_exists('shell_exec')) {
-            $tmpfile = tempnam(sys_get_temp_dir(), 'pdf_');
-            file_put_contents($tmpfile, $file->getData());
-            
-            $output = shell_exec("pdftotext '$tmpfile' - 2>/dev/null");
-            unlink($tmpfile);
-            
-            if ($output && !empty(trim($output))) {
-                return $output;
+        if (!function_exists('shell_exec')) {
+            if ($this->config->get('enable_logging')) {
+                error_log("Auto Dept Transfer - shell_exec not available for PDF extraction");
             }
+            return null;
         }
         
-        // Try PHP PDF parser libraries if available
-        // For now, just return null if no method available
         if ($this->config->get('enable_logging')) {
-            error_log("Auto Dept Transfer - PDF extraction not available");
+            error_log("Auto Dept Transfer - Processing PDF file: " . $file->getName() . " (mime: " . $file->getMimeType() . ")");
+        }
+        
+        $tmpfile = tempnam(sys_get_temp_dir(), 'pdf_');
+        file_put_contents($tmpfile, $file->getData());
+        
+        // Use pdftotext to extract text from PDF
+        $output = shell_exec("pdftotext '$tmpfile' - 2>/dev/null");
+        
+        unlink($tmpfile);
+        
+        if ($output && !empty(trim($output))) {
+            if ($this->config->get('enable_logging')) {
+                error_log("Auto Dept Transfer - Successfully extracted " . strlen($output) . " bytes from PDF document");
+            }
+            return $output;
+        }
+        
+        if ($this->config->get('enable_logging')) {
+            error_log("Auto Dept Transfer - Failed to extract text from PDF (empty output from pdftotext)");
         }
         
         return null;
