@@ -205,14 +205,21 @@ class AIAutoDeptTransferAnalyzer {
         $file_data = $file->getData();
         $mime_type = $file->getType();
         
+        if ($this->config->get('enable_logging')) {
+            error_log("Auto Dept Transfer - Processing image file: " . $file->getName() . " (mime: " . $mime_type . ", size: " . strlen($file_data) . " bytes)");
+        }
+        
         $result = $this->openai->extractTextFromImage($file_data, $mime_type);
         
         if ($result['success']) {
+            if ($this->config->get('enable_logging')) {
+                error_log("Auto Dept Transfer - Successfully extracted " . strlen($result['text']) . " bytes from image using Vision API");
+            }
             return $result['text'];
         }
         
         if ($this->config->get('enable_logging')) {
-            error_log("Auto Dept Transfer - Image extraction failed: " . $result['error']);
+            error_log("Auto Dept Transfer - Image extraction failed: " . ($result['error'] ?? 'Unknown error'));
         }
         
         return null;
