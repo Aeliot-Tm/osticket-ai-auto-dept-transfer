@@ -3,11 +3,11 @@
 require_once(INCLUDE_DIR . 'class.plugin.php');
 require_once(INCLUDE_DIR . 'class.forms.php');
 
-class DeptRulesField extends TextareaField {
-    static $widget = 'DeptRulesWidget';
+class AIAutoDeptTransferRulesField extends TextareaField {
+    static $widget = 'AIAutoDeptTransferRulesWidget';
 }
 
-class DeptRulesWidget extends TextareaWidget {
+class AIAutoDeptTransferRulesWidget extends TextareaWidget {
     function render($options=array()) {
         // Render the hidden textarea
         $config = $this->field->getConfiguration();
@@ -81,7 +81,7 @@ class AIAutoDeptTransferConfig extends PluginConfig {
                 ),
                 'hint' => __('Maximum file size to process for text extraction')
             )),
-            'dept_rules' => new DeptRulesField(array(
+            'dept_rules' => new AIAutoDeptTransferRulesField(array(
                 'label' => __('Department Transfer Rules'),
                 'required' => false,
                 'default' => '[]',
