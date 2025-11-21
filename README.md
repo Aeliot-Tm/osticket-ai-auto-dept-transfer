@@ -1,6 +1,6 @@
 # AI Auto Department Transfer Plugin for osTicket
 
-This plugin automatically transfers tickets to appropriate departments based on keywords found in the subject, body, and attached files. It uses OpenAI to analyze images and select the optimal department when multiple matches are found.
+This plugin for [osTicket](https://github.com/osTicket/osTicket) automatically transfers tickets to appropriate departments based on keywords found in the subject, body, and attached files. It uses OpenAI to analyze images and select the optimal department when multiple matches are found.
 
 ## Features
 
