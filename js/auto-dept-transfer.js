@@ -44,10 +44,10 @@
      */
     function analyzeTicket() {
         var $button = $('.auto-dept-transfer-btn');
-        var originalText = $button.text();
+        var originalHtml = $button.html();
         
         // Disable button and show loading state
-        $button.prop('disabled', true).text('Analyzing...');
+        $button.prop('disabled', true).html('<i class="icon-refresh icon-spin"></i> Analyzing...');
         
         $.ajax({
             url: config.ajax_url + '/analyze',
@@ -102,7 +102,7 @@
             },
             complete: function() {
                 // Re-enable button
-                $button.prop('disabled', false).text(originalText);
+                $button.prop('disabled', false).html(originalHtml);
             }
         });
     }

@@ -106,7 +106,7 @@ class DeptRulesWidget extends Widget {
     }
 }
 
-class AutoDeptTransferConfig extends PluginConfig {
+class AIAutoDeptTransferConfig extends PluginConfig {
     
     function getOptions() {
         return array(

@@ -3,7 +3,7 @@
 require_once(INCLUDE_DIR . 'class.plugin.php');
 require_once(INCLUDE_DIR . 'class.forms.php');
 
-class AutoDeptTransferConfig extends PluginConfig {
+class AIAutoDeptTransferConfig extends PluginConfig {
     
     function getOptions() {
         return array(

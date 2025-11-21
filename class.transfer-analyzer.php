@@ -1,19 +1,19 @@
 <?php
 
-require_once('class.openai-file.php');
+require_once('class.openai-client.php');
 
 /**
  * Transfer Analyzer
  * Analyzes tickets and determines appropriate department based on keywords
  */
-class TransferAnalyzer {
+class AIAutoDeptTransferAnalyzer {
     
     private $config;
     private $openai;
     
     public function __construct($config) {
         $this->config = $config;
-        $this->openai = new OpenAIFileClient(
+        $this->openai = new AIAutoDeptTransferOpenAIClient(
             $config->get('api_key'),
             $config->get('model'),
             $config->get('timeout'),

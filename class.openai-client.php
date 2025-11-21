@@ -1,10 +1,10 @@
 <?php
 
 /**
- * OpenAI File Client
+ * OpenAI Client
  * Handles file processing and AI-based department selection using OpenAI API
  */
-class OpenAIFileClient {
+class AIAutoDeptTransferOpenAIClient {
     
     private $api_key;
     private $model;

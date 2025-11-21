@@ -1,4 +1,4 @@
-# Auto Department Transfer Plugin для osTicket
+# AI Auto Department Transfer Plugin для osTicket
 
 Плагин автоматически переназначает тикеты на соответствующие отделы на основе ключевых слов, найденных в теме, содержимом и прикрепленных файлах. Использует OpenAI для анализа изображений и выбора оптимального отдела при множественных совпадениях.
 
@@ -18,7 +18,7 @@
 
 ## Установка
 
-1. Скопируйте папку `osticket-auto-dept-transfer` в `/include/plugins/`
+1. Скопируйте папку `osticket-ai-auto-dept-transfer` в `/include/plugins/`
 2. Перейдите в панель администратора: **Admin Panel → Manage → Plugins**
 3. Найдите "Auto Department Transfer" и нажмите **Install**
 4. После установки нажмите на плагин для настройки

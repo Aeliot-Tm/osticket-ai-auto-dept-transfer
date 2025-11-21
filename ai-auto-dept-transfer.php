@@ -7,7 +7,7 @@ require_once('config.php');
 
 // --- ГЛОБАЛЬНЫЕ ФУНКЦИИ-ОБРАБОТЧИКИ ---
 
-function auto_dept_transfer_handle_analyze() {
+function ai_auto_dept_transfer_handle_analyze() {
     register_shutdown_function(function() {
         $error = error_get_last();
         if ($error && ($error['type'] === E_ERROR || $error['type'] === E_PARSE || $error['type'] === E_COMPILE_ERROR)) {
@@ -40,12 +40,12 @@ function auto_dept_transfer_handle_analyze() {
         foreach ($installed_plugins as $path => $info) {
             if (is_object($info)) {
                 $manifest = isset($info->info) ? $info->info : array();
-                if (isset($manifest['id']) && $manifest['id'] == 'osticket:auto-dept-transfer') {
+                if (isset($manifest['id']) && $manifest['id'] == 'osticket:ai-auto-dept-transfer') {
                     $plugin = $info;
                     break;
                 }
             } elseif (is_array($info)) {
-                if (isset($info['id']) && $info['id'] == 'osticket:auto-dept-transfer') {
+                if (isset($info['id']) && $info['id'] == 'osticket:ai-auto-dept-transfer') {
                     $plugin = PluginManager::getInstance($path);
                     break;
                 }
@@ -53,7 +53,7 @@ function auto_dept_transfer_handle_analyze() {
         }
         
         if (!$plugin) {
-            $plugin = PluginManager::getInstance('plugins/auto-dept-transfer');
+            $plugin = PluginManager::getInstance('plugins/ai-auto-dept-transfer');
         }
         
         if (!$plugin || !is_a($plugin, 'Plugin')) {
@@ -79,16 +79,16 @@ function auto_dept_transfer_handle_analyze() {
         }
         
         // Load analyzer class
-        if (!class_exists('TransferAnalyzer')) {
+        if (!class_exists('AIAutoDeptTransferAnalyzer')) {
             require_once(dirname(__FILE__) . '/class.transfer-analyzer.php');
         }
         
-        if (!class_exists('TransferAnalyzer')) {
+        if (!class_exists('AIAutoDeptTransferAnalyzer')) {
             throw new Exception('Class TransferAnalyzer not found');
         }
         
         // Analyze ticket
-        $analyzer = new TransferAnalyzer($config);
+        $analyzer = new AIAutoDeptTransferAnalyzer($config);
         $result = $analyzer->analyzeTicket($ticket_id);
         
         // If successful analysis, perform transfer
@@ -130,8 +130,8 @@ function auto_dept_transfer_handle_analyze() {
 
 // --- КЛАСС ПЛАГИНА ---
 
-class AutoDeptTransferPlugin extends Plugin {
-    var $config_class = 'AutoDeptTransferConfig';
+class AIAutoDeptTransferPlugin extends Plugin {
+    var $config_class = 'AIAutoDeptTransferConfig';
     
     function bootstrap() {
         // Register signal handlers
@@ -163,12 +163,12 @@ class AutoDeptTransferPlugin extends Plugin {
             }
             
             // Load analyzer class
-            if (!class_exists('TransferAnalyzer')) {
+            if (!class_exists('AIAutoDeptTransferAnalyzer')) {
                 require_once(dirname(__FILE__) . '/class.transfer-analyzer.php');
             }
             
             // Analyze ticket
-            $analyzer = new TransferAnalyzer($config);
+            $analyzer = new AIAutoDeptTransferAnalyzer($config);
             $result = $analyzer->analyzeTicket($ticket->getId());
             
             if ($result['success']) {
@@ -214,7 +214,7 @@ class AutoDeptTransferPlugin extends Plugin {
      */
     function registerAjax($dispatcher, $data=null) {
         $dispatcher->append(
-            url_post('^/auto-dept-transfer/analyze', 'auto_dept_transfer_handle_analyze')
+            url_post('^/ai-auto-dept-transfer/analyze', 'ai_auto_dept_transfer_handle_analyze')
         );
     }
     
@@ -252,7 +252,7 @@ class AutoDeptTransferPlugin extends Plugin {
         // Pass config to JavaScript
         echo '<script type="text/javascript">
             var AUTO_DEPT_TRANSFER_CONFIG = {
-                ajax_url: "ajax.php/auto-dept-transfer",
+                ajax_url: "ajax.php/ai-auto-dept-transfer",
                 ticket_id: ' . $object->getId() . ',
                 enable_logging: ' . ($config->get('enable_logging') ? 'true' : 'false') . '
             };
