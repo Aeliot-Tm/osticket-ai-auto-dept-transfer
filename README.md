@@ -44,6 +44,15 @@ This plugin for [osTicket](https://github.com/osTicket/osTicket) automatically t
 
 6. **Enable Debug Logging** - enable detailed logging
 
+### Departments with Manual Transfer Button
+
+Control which departments can see the manual transfer button in the "More" dropdown based on the staff member's department:
+
+- **Leave empty** (default) - button is visible for all staff members from any department, including newly created ones
+- **Select specific departments** - button will only appear for staff members whose department is in the selected list
+
+This setting only affects the manual button visibility. Automatic transfer works for all departments regardless of this setting.
+
 ### Department Transfer Rules
 
 Rules are configured through a user-friendly dynamic table interface:

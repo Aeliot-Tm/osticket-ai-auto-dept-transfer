@@ -112,11 +112,26 @@
     }
     
     /**
+     * Check if current staff member's department is allowed to see the button
+     */
+    function isButtonAllowed() {
+        return config.is_manual_button_allowed;
+    }
+    
+    /**
      * Initialize plugin UI
      */
     function init() {
         // Wait for DOM to be ready
         $(document).ready(function() {
+            // Check if button should be shown for this staff member's department
+            if (!isButtonAllowed()) {
+                if (config.enable_logging) {
+                    console.log('Auto Dept Transfer - Button not allowed');
+                }
+                return;
+            }
+            
             // Find the "More" dropdown menu
             var $dropdown = $('#action-dropdown-more ul');
             

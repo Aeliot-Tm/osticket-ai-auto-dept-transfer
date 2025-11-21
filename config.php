@@ -20,8 +20,87 @@ class AIAutoDeptTransferRulesWidget extends TextareaWidget {
     }
 }
 
-class AIAutoDeptTransferConfig extends PluginConfig {
+/**
+ * Custom field for department selection that stores only IDs
+ * Names are loaded dynamically on render
+ */
+class AIAutoDeptTransferDepartmentMultiselectField extends TextboxField {
+    static $widget = 'AIAutoDeptTransferDepartmentMultiselectWidget';
+}
+
+class AIAutoDeptTransferDepartmentMultiselectWidget extends Widget {
     
+    function render($options=array()) {
+        // Parse current value (JSON array of IDs)
+        $selected = array();
+        if ($this->value) {
+            $selected = is_array($this->value) ? $this->value : json_decode($this->value, true);
+        }
+        
+        // Get all departments
+        $depts = array();
+        if (class_exists('Dept')) {
+            $depts = Dept::getDepartments();
+        }
+        
+        $name = $this->name;
+        $id = substr(str_replace(array('[', ']'), '_', $name), 0, -1);
+        ?>
+        <input type="hidden" name="<?php echo $name; ?>" id="<?php echo $id; ?>_hidden" value="<?php echo Format::htmlchars($this->value); ?>" />
+        <select id="<?php echo $id; ?>_select" multiple="multiple" data-placeholder="<?php echo __('Select departments...'); ?>" style="width: 350px;">
+            <?php foreach ($depts as $dept_id => $dept_name): ?>
+                <option value="<?php echo $dept_id; ?>" <?php if (in_array($dept_id, $selected)) echo 'selected="selected"'; ?>>
+                    <?php echo Format::htmlchars($dept_name); ?>
+                </option>
+            <?php endforeach; ?>
+        </select>
+        <script type="text/javascript">
+        $(function() {
+            var $select = $('#<?php echo $id; ?>_select');
+            var $hidden = $('#<?php echo $id; ?>_hidden');
+            
+            $select.select2({
+                minimumResultsForSearch: 10,
+                width: '350px'
+            });
+            
+            $select.on('change', function() {
+                var selected = $(this).val() || [];
+                var ids = selected.map(function(v) { return parseInt(v); });
+                $hidden.val(JSON.stringify(ids));
+            });
+        });
+        </script>
+        <?php
+    }
+}
+
+class AIAutoDeptTransferConfig extends PluginConfig {
+
+    function get($key, $default = null)
+    {
+        $value = parent::get($key, $default);
+        if ('allowed_depts' === $key) {
+            if (!$value){
+                $value = '[]';
+            }
+            if (is_string($value)) {
+                $value = rtrim($value);
+                if (!$value || 'null' === strtolower($value)){
+                    $value = '[]';
+                }
+                $value = json_decode($value, true);
+                if (!\is_array($value)) {
+                    $value = [];
+                }
+            }
+
+            $value = array_map('intval', $value) ?: null;
+        }
+
+        return $value;
+    }
+
     function getOptions() {
         return array(
             'api_key' => new TextboxField(array(
@@ -86,6 +165,15 @@ class AIAutoDeptTransferConfig extends PluginConfig {
                 'required' => false,
                 'default' => '[]',
                 'hint' => __('Configure department transfer rules. Use the table below to add departments and keywords.')
+            )),
+            'allowed_depts' => new AIAutoDeptTransferDepartmentMultiselectField(array(
+                'label' => __('Departments with Manual Transfer Button'),
+                'required' => false,
+                'default' => [],
+                'configuration' => array(
+                    'multiselect' => true
+                ),
+                'hint' => __('Select departments that can see the manual transfer button. Leave empty to show for all departments (including future ones).')
             ))
         );
     }

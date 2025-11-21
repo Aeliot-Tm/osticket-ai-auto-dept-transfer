@@ -128,8 +128,25 @@ class AIAutoDeptTransferPlugin extends Plugin {
      * Load CSS and JavaScript assets for ticket view
      */
     function loadAssets($object) {
+        global $thisstaff;
+        
         $config = $this->getConfig();
         $path = dirname(__FILE__);
+
+        // Get current staff member's department ID
+        $staff_dept_id = 0;
+        if ($thisstaff && method_exists($thisstaff, 'getDeptId')) {
+            $staff_dept_id = $thisstaff->getDeptId();
+        }
+
+        $is_manual_button_allowed = false;
+        // Get allowed departments (returns array of id => name or null/empty)
+        $allowed_depts = $config->get('allowed_depts');
+        if (is_null($allowed_depts)) {
+            $is_manual_button_allowed = true;
+        } elseif ($staff_dept_id) {
+            $is_manual_button_allowed = in_array($staff_dept_id, $allowed_depts);
+        }
         
         // Load CSS
         echo '<style type="text/css">';
@@ -141,6 +158,7 @@ class AIAutoDeptTransferPlugin extends Plugin {
             var AI_AUTO_DEPT_TRANSFER_CONFIG = {
                 ajax_url: "ajax.php/ai-auto-dept-transfer",
                 ticket_id: ' . $object->getId() . ',
+                is_manual_button_allowed: ' . json_encode($is_manual_button_allowed) . ',
                 enable_logging: ' . ($config->get('enable_logging') ? 'true' : 'false') . '
             };
         </script>';
