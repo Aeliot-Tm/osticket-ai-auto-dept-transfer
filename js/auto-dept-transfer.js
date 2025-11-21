@@ -6,7 +6,7 @@
     'use strict';
     
     // Configuration from server
-    var config = window.AUTO_DEPT_TRANSFER_CONFIG || {};
+    var config = window.AI_AUTO_DEPT_TRANSFER_CONFIG || {};
     
     /**
      * Show notification message

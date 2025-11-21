@@ -251,7 +251,7 @@ class AIAutoDeptTransferPlugin extends Plugin {
         
         // Pass config to JavaScript
         echo '<script type="text/javascript">
-            var AUTO_DEPT_TRANSFER_CONFIG = {
+            var AI_AUTO_DEPT_TRANSFER_CONFIG = {
                 ajax_url: "ajax.php/ai-auto-dept-transfer",
                 ticket_id: ' . $object->getId() . ',
                 enable_logging: ' . ($config->get('enable_logging') ? 'true' : 'false') . '
