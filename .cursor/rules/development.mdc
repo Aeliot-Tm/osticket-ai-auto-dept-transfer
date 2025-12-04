@@ -1,0 +1,16 @@
+---
+alwaysApply: true
+---
+
+## Plugin `osticket-ai-auto-dept-transfer`
+
+- **Purpose**: Automatically determines the correct department for a ticket based on its content using AI and transfers the ticket to the appropriate department.
+- **Where to apply these rules**: any changes under `include/plugins/osticket-ai-auto-dept-transfer/*`, including analyzer classes, configuration, and the rules UI.
+- **What must be preserved**:
+  - Do not change the storage format or interpretation of routing rules without migrations and backward compatibility.
+  - Be careful with auto-transfer logic to avoid mass incorrect ticket moves; prefer conservative behavior by default.
+  - Respect existing permission settings: the plugin must not transfer tickets in ways that violate osTicket policies or role-based access.
+- **Integrations and dependencies**: changes that affect departments or queues must be aligned with the core and must not break manual ticket transfer flows.
+- **Stack**:
+    - PHP 8.2
+    - osTicket: 1.18
