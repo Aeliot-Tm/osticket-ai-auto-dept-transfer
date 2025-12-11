@@ -8,9 +8,6 @@ class AIAutoDeptTransferPlugin extends Plugin {
         Signal::connect('ticket.created', array($this, 'onTicketCreated'));
         Signal::connect('object.view', array($this, 'onObjectView'));
         Signal::connect('ajax.scp', array($this, 'registerAjax'));
-        
-        // Load config UI on admin pages
-        $this->onAdminPage();
     }
 
     /**
@@ -115,16 +112,6 @@ class AIAutoDeptTransferPlugin extends Plugin {
     }
     
     /**
-     * Inject config UI script on plugin configuration page
-     */
-    function onAdminPage() {
-        // Check if we're on plugin config page
-        if (isset($_GET['id']) && strpos($_SERVER['REQUEST_URI'], 'plugins.php') !== false) {
-            $this->loadConfigAssets();
-        }
-    }
-    
-    /**
      * Load CSS and JavaScript assets for ticket view
      */
     function loadAssets($object) {
@@ -166,17 +153,6 @@ class AIAutoDeptTransferPlugin extends Plugin {
         // Load JavaScript
         echo '<script type="text/javascript">';
         @readfile($path . '/js/auto-dept-transfer.js');
-        echo '</script>';
-    }
-    
-    /**
-     * Load config UI assets
-     */
-    function loadConfigAssets() {
-        $path = dirname(__FILE__);
-        
-        echo '<script type="text/javascript">';
-        @readfile($path . '/js/config-ui.js');
         echo '</script>';
     }
 }

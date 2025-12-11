@@ -1,22 +1,24 @@
 <?php
 
 /**
- * OpenAI Client
  * Handles file processing and AI-based department selection using OpenAI API
  */
-class AIAutoDeptTransferOpenAIClient {
+class AIAutoDeptTransferAPIClient {
     
-    private $api_key;
-    private $model;
-    private $timeout;
-    private $api_url = 'https://api.openai.com/v1/chat/completions';
-    private $enable_logging;
+    private string $api_key;
+    private string $api_url;
+    private bool $enable_logging;
+    private string $model;
+    private float $temperature;
+    private int $timeout;
     
-    public function __construct($api_key, $model = 'gpt-4o-mini', $timeout = 30, $enable_logging = false) {
+    public function __construct(string $api_key, string $model, string $api_url, int $timeout, bool $enable_logging, float $temperature) {
         $this->api_key = trim($api_key);
-        $this->model = $model;
-        $this->timeout = $timeout;
+        $this->api_url = $api_url;
         $this->enable_logging = $enable_logging;
+        $this->model = $model;
+        $this->temperature = $temperature;
+        $this->timeout = $timeout;
     }
     
     /**
@@ -174,7 +176,7 @@ class AIAutoDeptTransferOpenAIClient {
         $data = array(
             'model' => $model ?: $this->model,
             'messages' => $messages,
-            'temperature' => 0.3
+            'temperature' => $this->temperature
         );
         
         if ($json_mode) {

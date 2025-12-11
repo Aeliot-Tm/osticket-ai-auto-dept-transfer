@@ -1,24 +1,37 @@
 <?php
 
-require_once('class.openai-client.php');
+require_once('class.api-client.php');
 
 /**
  * Transfer Analyzer
  * Analyzes tickets and determines appropriate department based on keywords
  */
 class AIAutoDeptTransferAnalyzer {
-    
-    private $config;
-    private $openai;
-    
-    public function __construct($config) {
+
+    private ?AIAutoDeptTransferAPIClient $apiClient = null;
+    private AIAutoDeptTransferConfig $config;
+
+    public function __construct(AIAutoDeptTransferConfig $config) {
         $this->config = $config;
-        $this->openai = new AIAutoDeptTransferOpenAIClient(
-            $config->get('api_key'),
-            $config->get('model'),
-            $config->get('timeout'),
-            $config->get('enable_logging')
-        );
+
+        $api_key = $config->get('api_key');
+        $model = $config->get('model');
+        $api_url = $config->get('api_url');
+
+        if ($api_key && $model && $api_url) {
+            $temperature = $config->get('temperature');
+            if ('' === trim((string)$temperature)) {
+                $temperature = 0.3;
+            }
+            $this->apiClient = new AIAutoDeptTransferAPIClient(
+                $api_key,
+                $model,
+                $api_url,
+                (int) $config->get('timeout', 30),
+                (bool) $config->get('enable_logging', false),
+                (float) $temperature
+            );
+        }
     }
     
     /**
@@ -44,6 +57,13 @@ class AIAutoDeptTransferAnalyzer {
                 return array(
                     'success' => false,
                     'error' => 'No department rules configured'
+                );
+            }
+
+            if (!$this->apiClient) {
+                return array(
+                    'success' => false,
+                    'error' => 'API client not configured. Please check plugin settings (API Key, Model, API URL).'
                 );
             }
             
@@ -78,7 +98,7 @@ class AIAutoDeptTransferAnalyzer {
             }
             
             // Multiple matches - use AI to select best one
-            $selection = $this->openai->selectBestDepartment($content, $matches);
+            $selection = $this->apiClient->selectBestDepartment($content, $matches);
             
             if ($selection['success']) {
                 $selection['confidence'] = 'medium';
@@ -209,7 +229,7 @@ class AIAutoDeptTransferAnalyzer {
             error_log("Auto Dept Transfer - Processing image file: " . $file->getName() . " (mime: " . $mime_type . ", size: " . strlen($file_data) . " bytes)");
         }
         
-        $result = $this->openai->extractTextFromImage($file_data, $mime_type);
+        $result = $this->apiClient->extractTextFromImage($file_data, $mime_type);
         
         if ($result['success']) {
             if ($this->config->get('enable_logging')) {
