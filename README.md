@@ -79,7 +79,7 @@ This plugin for [osTicket](https://github.com/osTicket/osTicket) automatically t
 
 2. **Auto-transfer on ticket creation** - automatically analyze and transfer new tickets
 
-3. **Include analyzed file content in the transfer decision message** (`show_files_content`)  
+3. **Include analyzed file content in the transfer decision message** (`show_files_info`)  
    - When enabled, internal notes will include the extracted text from processed attachments.
    - Always shows a list of ignored files (if any) with the reason.
 

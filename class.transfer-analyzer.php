@@ -650,7 +650,7 @@ class AIAutoDeptTransferAnalyzer {
     private function getAnalyzedFilesNote($analyzed_files)
     {
         $note_body = '';
-        if ($this->config->get('show_files_content') && $analyzed_files) {
+        if ($this->config->get('show_files_info') && $analyzed_files) {
             $note_body .= '<br><br>';
             
             foreach ($analyzed_files as $file_info) {
@@ -670,7 +670,7 @@ class AIAutoDeptTransferAnalyzer {
     private function getIgnoredFilesNote($ignored_files)
     {
         $note_body = '';
-        if ($this->config->get('show_files_content') && $ignored_files) {
+        if ($this->config->get('show_files_info') && $ignored_files) {
             $note_body .= '<br><br>';
             $note_body .= '<hr>';
             $note_body .= '<strong>Ignored files:</strong><br>';
