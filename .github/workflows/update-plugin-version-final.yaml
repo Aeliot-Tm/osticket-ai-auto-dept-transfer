@@ -74,7 +74,7 @@ jobs:
           git push origin ":refs/tags/$TAG_NAME"
 
           # Create new tag at current commit
-          git tag -a "$TAG_NAME"
+          git tag -a "$TAG_NAME" -m "Release $TAG_NAME"
 
           # Push the commit and new tag
           git push origin HEAD
