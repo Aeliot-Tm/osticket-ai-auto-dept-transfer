@@ -64,34 +64,22 @@
                 }
                 
                 if (response.success) {
-                    if (response.transferred) {
-                        showNotification(
-                            'Ticket successfully transferred to <strong>' + response.dept_name + '</strong>. ' +
-                            'Reason: ' + response.reason,
-                            'success'
-                        );
-                        
-                        // Reload page after short delay to show updated department
-                        setTimeout(function() {
-                            window.location.reload();
-                        }, 2000);
-                    } else {
-                        showNotification(
-                            response.message || 'Transfer not needed - ticket already in the correct department.',
-                            'info'
-                        );
-                    }
-                } else if (response.no_match) {
                     showNotification(
-                        'No matching department found. ' + (response.message || ''),
-                        'warning'
+                        'Ticket successfully transferred to <strong>' + response.dept_name + '</strong>. ' +
+                        'Reason: ' + response.reason,
+                        'success'
                     );
                 } else {
                     showNotification(
-                        'Analysis failed: ' + (response.error || 'Unknown error'),
-                        'error'
+                        response.message || response.error || 'Cannot transfer (unknown reason).',
+                        'info'
                     );
                 }
+
+                // Reload page after short delay to show updated department
+                setTimeout(function() {
+                    window.location.reload();
+                }, 2000);
             },
             error: function(xhr, status, error) {
                 if (config.enable_logging) {

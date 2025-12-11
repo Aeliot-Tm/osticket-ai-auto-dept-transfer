@@ -256,6 +256,13 @@ class AIAutoDeptTransferConfig extends PluginConfig {
                 ),
                 'hint' => __('Select departments that can see the manual transfer button. Leave empty to show for all departments (including future ones).')
             )),
+            'show_files_info' => new BooleanField(array(
+                'label' => __('Show processed files info'),
+                'default' => false,
+                'configuration' => array(
+                    'desc' => __('Add analyzed file contents anr/or names of ignored to the transfer decision message (debug mode)')
+                )
+            )),
             'enable_logging' => new BooleanField(array(
                 'label' => __('Enable Debug Logging'),
                 'default' => false,

@@ -10,6 +10,7 @@ class AIAutoDeptTransferAnalyzer {
 
     private ?AIAutoDeptTransferAPIClient $apiClient = null;
     private AIAutoDeptTransferConfig $config;
+    private string $notePoster = 'AI Department Detector';
 
     public function __construct(AIAutoDeptTransferConfig $config) {
         $this->config = $config;
@@ -36,39 +37,38 @@ class AIAutoDeptTransferAnalyzer {
     
     /**
      * Analyze ticket and determine if transfer is needed
-     * 
-     * @param int $ticket_id Ticket ID
+     *
      * @return array Result with transfer recommendation
      */
-    public function analyzeTicket($ticket_id) {
+    public function analyzeTicket(Ticket $ticket) {
+        $analyzed_files = array();
+        $ignored_files = array();
         try {
-            $ticket = Ticket::lookup($ticket_id);
-            
-            if (!$ticket) {
-                return array(
-                    'success' => false,
-                    'error' => 'Ticket not found'
-                );
-            }
-            
             // Get department rules
             $rules = $this->config->getDeptRules();
             if (empty($rules)) {
                 return array(
                     'success' => false,
-                    'error' => 'No department rules configured'
+                    'error' => 'No department rules configured',
+                    'analyzed_files' => $analyzed_files,
+                    'ignored_files' => $ignored_files
                 );
             }
 
             if (!$this->apiClient) {
                 return array(
                     'success' => false,
-                    'error' => 'API client not configured. Please check plugin settings (API Key, Model, API URL).'
+                    'error' => 'API client not configured. Please check plugin settings (API Key, Model, API URL).',
+                    'analyzed_files' => $analyzed_files,
+                    'ignored_files' => $ignored_files
                 );
             }
             
             // Extract all content from ticket
-            $content = $this->extractTicketContent($ticket);
+            $content_data = $this->extractTicketContent($ticket);
+            $content = $content_data['content'];
+            $analyzed_files = $content_data['analyzed_files'];
+            $ignored_files = $content_data['ignored_files'];
             
             if ($this->config->get('enable_logging')) {
                 error_log("Auto Dept Transfer - Analyzing ticket #" . $ticket->getNumber());
@@ -82,7 +82,9 @@ class AIAutoDeptTransferAnalyzer {
                 return array(
                     'success' => false,
                     'no_match' => true,
-                    'message' => 'No matching keywords found for any department'
+                    'message' => 'No matching keywords found for any department',
+                    'analyzed_files' => $analyzed_files,
+                    'ignored_files' => $ignored_files
                 );
             }
             
@@ -93,7 +95,9 @@ class AIAutoDeptTransferAnalyzer {
                     'dept_id' => $matches[0]['dept_id'],
                     'dept_name' => $matches[0]['dept_name'],
                     'reason' => $matches[0]['reason'],
-                    'confidence' => 'high'
+                    'confidence' => 'high',
+                    'analyzed_files' => $analyzed_files,
+                    'ignored_files' => $ignored_files
                 );
             }
             
@@ -104,12 +108,20 @@ class AIAutoDeptTransferAnalyzer {
                 $selection['confidence'] = 'medium';
             }
             
+            $selection['analyzed_files'] = $analyzed_files;
+            $selection['ignored_files'] = $ignored_files;
+            
             return $selection;
             
         } catch (Exception $e) {
+            if ($this->config->get('enable_logging')) {
+                error_log("Auto Dept Transfer - Exception: " . $e->getMessage());
+            }
             return array(
                 'success' => false,
-                'error' => 'Exception: ' . $e->getMessage()
+                'error' => 'Exception: ' . $e->getMessage(),
+                'analyzed_files' => $analyzed_files,
+                'ignored_files' => $ignored_files
             );
         }
     }
@@ -118,10 +130,12 @@ class AIAutoDeptTransferAnalyzer {
      * Extract all content from ticket including subject, body, and attachments
      * 
      * @param Ticket $ticket
-     * @return string Combined content
+     * @return array Array with 'content' (string), 'analyzed_files' (array), and 'ignored_files' (array)
      */
     private function extractTicketContent($ticket) {
         $content = array();
+        $analyzed_files = array();
+        $ignored_files = array();
         
         // Add subject
         $subject = $ticket->getSubject();
@@ -147,29 +161,42 @@ class AIAutoDeptTransferAnalyzer {
                 // Process attachments
                 if ($entry->has_attachments && isset($entry->attachments)) {
                     foreach ($entry->attachments as $attachment) {
-                        $file_text = $this->processAttachment($attachment);
-                        if ($file_text) {
-                            $content[] = 'File content: ' . $file_text;
+                        $file_info = $this->processAttachment($attachment);
+                        if ($file_info['content'] ?? false) {
+                            $content[] = 'File content: ' . $file_info['content'];
+                        }
+                        if ($file_info['ignored']) {
+                            $ignored_files[] = $file_info;
+                        } else {
+                            $analyzed_files[] = $file_info;
                         }
                     }
                 }
             }
         }
         
-        return implode("\n\n", $content);
+        return array(
+            'content' => implode("\n\n", $content),
+            'analyzed_files' => $analyzed_files,
+            'ignored_files' => $ignored_files
+        );
     }
     
     /**
      * Extract text from attachment file
      * 
      * @param object $attachment Attachment object
-     * @return string|null Extracted text or null
+     * @return array|null Array with 'filename', 'content' (if successful), 'ignored' and 'reason' (if ignored) keys, or null
      */
     private function processAttachment($attachment) {
         try {
             $file = $attachment->getFile();
             if (!$file) {
-                return null;
+                return array(
+                    'ignored' => true,
+                    'filename' => $attachment->getFilename() ?? 'Unknown',
+                    'reason' => 'File could not be accessed or processed'
+                );
             }
             
             $filename = $attachment->getFilename();
@@ -182,7 +209,13 @@ class AIAutoDeptTransferAnalyzer {
                 if ($this->config->get('enable_logging')) {
                     error_log("Auto Dept Transfer - File too large: $filename ($size bytes)");
                 }
-                return null;
+                return array(
+                    'filename' => $filename,
+                    'ignored' => true,
+                    'reason' => sprintf('File size (%s) exceeds maximum allowed size (%s MB)', 
+                        $this->formatFileSize($size), 
+                        $this->config->get('max_file_size'))
+                );
             }
             
             if ($this->config->get('enable_logging')) {
@@ -191,30 +224,73 @@ class AIAutoDeptTransferAnalyzer {
             
             // Handle images with Vision API
             if (preg_match('/^image\/(jpeg|jpg|png|gif|webp)$/i', $mime_type)) {
-                return $this->extractTextFromImage($file);
+                $file_text = $this->extractTextFromImage($file);
             }
-            
             // Handle PDF files
-            if ($mime_type == 'application/pdf') {
-                return $this->extractTextFromPDF($file);
+            elseif ($mime_type == 'application/pdf') {
+                $file_text = $this->extractTextFromPDF($file);
             }
-            
             // Handle Word documents
-            if (preg_match('/word|officedocument\.wordprocessing/i', $mime_type)) {
-                return $this->extractTextFromWord($file);
+            elseif (preg_match('/word|officedocument\.wordprocessing/i', $mime_type)) {
+                $file_text = $this->extractTextFromWord($file);
+            }
+            else {
+                if ($this->config->get('enable_logging')) {
+                    error_log("Auto Dept Transfer - Unsupported file type: $mime_type");
+                }
+                return array(
+                    'filename' => $filename,
+                    'ignored' => true,
+                    'reason' => 'Unsupported file type: ' . $mime_type
+                );
             }
             
-            if ($this->config->get('enable_logging')) {
-                error_log("Auto Dept Transfer - Unsupported file type: $mime_type");
+            if (null !== $file_text) {
+                $file_text = trim($file_text);
             }
             
-            return null;
+            if (!$file_text) {
+                return array(
+                    'filename' => $filename,
+                    'ignored' => true,
+                    'reason' => 'No text content found in file'
+                );
+            }
+            
+            return array(
+                'filename' => $filename,
+                'ignored' => false,
+                'content' => $file_text
+            );
             
         } catch (Exception $e) {
             if ($this->config->get('enable_logging')) {
                 error_log("Auto Dept Transfer - Error processing attachment: " . $e->getMessage());
             }
-            return null;
+            
+            return array(
+                'filename' => $attachment->getFilename() ?? 'Unknown',
+                'ignored' => true,
+                'reason' => 'Error processing file: ' . $e->getMessage()
+            );
+        }
+    }
+    
+    /**
+     * Format file size in human-readable format
+     *
+     * @param int $bytes File size in bytes
+     * @return string Formatted size
+     */
+    private function formatFileSize($bytes) {
+        if ($bytes >= 1073741824) {
+            return number_format($bytes / 1073741824, 2) . ' GB';
+        } elseif ($bytes >= 1048576) {
+            return number_format($bytes / 1048576, 2) . ' MB';
+        } elseif ($bytes >= 1024) {
+            return number_format($bytes / 1024, 2) . ' KB';
+        } else {
+            return $bytes . ' bytes';
         }
     }
     
@@ -478,9 +554,11 @@ class AIAutoDeptTransferAnalyzer {
      * @param Ticket $ticket
      * @param int $dept_id Target department ID
      * @param string $reason Reason for transfer
-     * @return bool Success status
+     * @param array $analyzed_files Array of analyzed files with 'filename' and 'content' keys
+     * @param array $ignored_files Array of ignored files with 'filename' and 'reason' keys
+     * @return array{success: bool, message: string } Success status
      */
-    public function transferTicket($ticket, $dept_id, $reason) {
+    public function transferTicket($ticket, $dept_id, $reason, $analyzed_files = array(), $ignored_files = array()) {
         try {
             $current_dept_id = $ticket->getDeptId();
             
@@ -489,7 +567,8 @@ class AIAutoDeptTransferAnalyzer {
                 if ($this->config->get('enable_logging')) {
                     error_log("Auto Dept Transfer - Ticket already in department $dept_id");
                 }
-                return false;
+                
+                return ['success' => false, 'message' => 'Ticket already in target department'];
             }
             
             // Get department names
@@ -500,36 +579,41 @@ class AIAutoDeptTransferAnalyzer {
                 if ($this->config->get('enable_logging')) {
                     error_log("Auto Dept Transfer - Target department not found or inactive: $dept_id");
                 }
-                return false;
+                
+                return ['success' => false, 'message' => "Target department ($dept_id) not found or inactive"];
             }
             
             // Perform transfer
             $success = $ticket->setDeptId($dept_id);
-            
-            if ($success) {
-                // Log internal note
-                $note_title = 'Auto Department Transfer';
-                $note_body = sprintf(
-                    'Ticket automatically transferred from "%s" to "%s".<br><br>Reason: %s',
-                    $current_dept->getName(),
-                    $target_dept->getName(),
-                    htmlspecialchars($reason)
-                );
-                
-                $ticket->logNote($note_title, $note_body, 'SYSTEM', false);
-                
-                if ($this->config->get('enable_logging')) {
-                    error_log("Auto Dept Transfer - Successfully transferred ticket #{$ticket->getNumber()} to {$target_dept->getName()}");
-                }
+            if (!$success){
+                return ['success' => false, 'message' => 'Ticket transfer failed'];
             }
             
-            return $success;
+            // Log internal note
+            $note_title = 'Auto Department Transfer';
+            $note_body = sprintf(
+                'Ticket automatically transferred from "%s" to "%s".<br><br>Reason: %s',
+                $current_dept->getName(),
+                $target_dept->getName(),
+                htmlspecialchars($reason)
+            );
+            
+            // Add file contents if option is enabled
+            $note_body .= $this->getAnalyzedFilesNote($analyzed_files);
+            
+            // Add ignored files list (always show if there are ignored files)
+            $note_body .= $this->getIgnoredFilesNote($ignored_files);
+            
+            $ticket->logNote($note_title, $note_body,  $this->notePoster, false);
+            
+            return ['success' => true, 'message' => "Successfully transferred ticket #{$ticket->getNumber()} to {$target_dept->getName()}"];
             
         } catch (Exception $e) {
             if ($this->config->get('enable_logging')) {
                 error_log("Auto Dept Transfer - Transfer failed: " . $e->getMessage());
             }
-            return false;
+            
+            return ['success' => false, 'message' => 'Internal exception happened. See log for details.'];
         }
     }
     
@@ -539,18 +623,65 @@ class AIAutoDeptTransferAnalyzer {
      * @param Ticket $ticket
      * @param string $reason Reason why transfer failed
      */
-    public function logTransferFailure($ticket, $reason) {
+    public function logTransferFailure($ticket, $reason, $analyzed_files, $ignored_files) {
         try {
             $note_title = 'Auto Department Transfer - Not Performed';
             $note_body = 'Automatic department transfer was not performed.<br><br>Reason: ' . htmlspecialchars($reason);
             
-            $ticket->logNote($note_title, $note_body, 'SYSTEM', false);
+            // Add file contents if option is enabled
+            $note_body .= $this->getAnalyzedFilesNote($analyzed_files);
+            
+            // Add ignored files list (always show if there are ignored files)
+            $note_body .= $this->getIgnoredFilesNote($ignored_files);
+            
+            $ticket->logNote($note_title, $note_body, $this->notePoster, false);
             
         } catch (Exception $e) {
             if ($this->config->get('enable_logging')) {
                 error_log("Auto Dept Transfer - Failed to log note: " . $e->getMessage());
             }
         }
+    }
+    
+    /**
+     * @param array<array<string,mixed>> $analyzed_files
+     * @return string
+     */
+    private function getAnalyzedFilesNote($analyzed_files)
+    {
+        $note_body = '';
+        if ($this->config->get('show_files_info') && $analyzed_files) {
+            $note_body .= '<br><br>';
+            
+            foreach ($analyzed_files as $file_info) {
+                $note_body .= '<hr>';
+                $note_body .= 'Text from file \'' . htmlspecialchars($file_info['filename']) . '\'<br>';
+                $note_body .= '<pre>' . htmlspecialchars($file_info['content']) . '</pre>';
+            }
+        }
+        
+        return $note_body;
+    }
+    
+    /**
+     * @param array<array<string,mixed>> $ignored_files
+     * @return string
+     */
+    private function getIgnoredFilesNote($ignored_files)
+    {
+        $note_body = '';
+        if ($this->config->get('show_files_info') && $ignored_files) {
+            $note_body .= '<br><br>';
+            $note_body .= '<hr>';
+            $note_body .= '<strong>Ignored files:</strong><br>';
+            $note_body .= '<ul>';
+            foreach ($ignored_files as $file_info) {
+                $note_body .= '<li>' . htmlspecialchars($file_info['filename']) . ' - ' . htmlspecialchars($file_info['reason']) . '</li>';
+            }
+            $note_body .= '</ul>';
+        }
+        
+        return $note_body;
     }
 }
 
