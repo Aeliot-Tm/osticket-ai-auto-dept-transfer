@@ -173,17 +173,6 @@ class AIAutoDeptTransferConfig extends PluginConfig {
                 'default' => '[]',
                 'hint' => __('Configure department transfer rules. Use the table below to add departments and keywords.')
             )),
-            'max_file_size' => new TextboxField(array(
-                'label' => __('Max File Size (MB)'),
-                'default' => '10',
-                'required' => true,
-                'validator' => 'number',
-                'configuration' => array(
-                        'size' => 10,
-                        'length' => 3
-                ),
-                'hint' => __('Maximum file size to process for text extraction')
-            )),
             'api_provider' => new ChoiceField(array(
                 'label' => __('API Provider'),
                 'default' => 'openai',
@@ -229,6 +218,17 @@ class AIAutoDeptTransferConfig extends PluginConfig {
                     'length' => 3
                 ),
                 'hint' => __('Maximum time to wait for OpenAI response')
+            )),
+            'max_file_size' => new TextboxField(array(
+                'label' => __('Max File Size (MB)'),
+                'default' => '10',
+                'required' => true,
+                'validator' => 'number',
+                'configuration' => array(
+                    'size' => 10,
+                    'length' => 3
+                ),
+                'hint' => __('Maximum file size to process for text extraction')
             )),
             'auto_transfer' => new BooleanField(array(
                 'label' => __('Auto-transfer on ticket creation'),
