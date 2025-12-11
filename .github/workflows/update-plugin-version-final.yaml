@@ -63,7 +63,6 @@ jobs:
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add plugin.php
           git commit -m "Update version to $TAG_NAME"
-          git push origin HEAD
 
       - name: Re-point tag and push
         if: steps.version_check.outputs.needs_update == 'true'
@@ -74,8 +73,11 @@ jobs:
           git tag -d "$TAG_NAME"
           git push origin ":refs/tags/$TAG_NAME"
 
-          # Create and push new tag at current commit
+          # Create new tag at current commit
           git tag -a "$TAG_NAME"
+
+          # Push the commit and new tag
+          git push origin HEAD
           git push origin "$TAG_NAME"
-          
+
           echo "Successfully moved tag $TAG_NAME to new commit"
