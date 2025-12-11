@@ -12,7 +12,7 @@ class AIAutoDeptTransferRulesWidget extends TextareaWidget {
         // Render the hidden textarea
         $config = $this->field->getConfiguration();
         ?>
-        <script type="text/javascript"><?php readfile(__DIR__ . '/js/config.js'); ?></script>
+        <script type="text/javascript"><?php readfile(__DIR__ . '/js/config-dept-rules.js'); ?></script>
         <textarea style="display:none !important;" name="<?php echo $this->name; ?>" 
                   id="dept_rules_json"><?php echo Format::htmlchars($this->value); ?></textarea>
         <?php
