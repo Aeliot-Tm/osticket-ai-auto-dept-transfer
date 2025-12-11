@@ -2,13 +2,15 @@ name: Update plugin version to tag
 
 on:
   create:
-    types: [tag]
+    tags:
+      - "**"
 
 permissions:
   contents: write
 
 jobs:
   sync-version:
+    if: github.event.ref_type == 'tag'
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
