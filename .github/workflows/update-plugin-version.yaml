@@ -1,0 +1,83 @@
+name: Update plugin version to tag
+
+on:
+  create:
+    tags:
+      - "**"
+
+permissions:
+  contents: write
+
+jobs:
+  sync-version:
+    if: github.event.ref_type == 'tag'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set tag name to variable
+        run: |
+          TAG_NAME=${GITHUB_REF_NAME}
+          echo "TAG_NAME=${TAG_NAME}" >> $GITHUB_ENV
+          echo "Extracted tag: $TAG_NAME"
+
+      - name: Check current version
+        id: version_check
+        run: |
+          set -euo pipefail
+          CURRENT_VERSION=$(php -r ' $data = include "plugin.php"; echo $data["version"] ?? ""; ')
+          if [ "$CURRENT_VERSION" = "$TAG_NAME" ]; then
+            echo "Version ($CURRENT_VERSION) matches tag. No update needed."
+            echo "needs_update=false" >> $GITHUB_OUTPUT
+          else
+            echo "Version ($CURRENT_VERSION) differs from tag ($TAG_NAME). Update needed."
+            echo "needs_update=true" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Update version in plugin.php to tag
+        if: steps.version_check.outputs.needs_update == 'true'
+        run: |
+          set -euo pipefail
+          perl -0777 -pi -e "s/'version'\s*=>\s*'[^']*'/'version' =>        '$TAG_NAME'/" plugin.php
+          echo "Updated version in plugin.php to: $TAG_NAME"
+          cat plugin.php | grep "'version'"
+
+      - name: Verify version update
+        if: steps.version_check.outputs.needs_update == 'true'
+        run: |
+          UPDATED_VERSION=$(php -r ' $data = include "plugin.php"; echo $data["version"] ?? ""; ')
+          if [ "$UPDATED_VERSION" != "$TAG_NAME" ]; then
+            echo "Error: Version update failed. Expected: $TAG_NAME, Got: $UPDATED_VERSION"
+            exit 1
+          fi
+          echo "Version successfully updated to: $UPDATED_VERSION"
+
+      - name: Commit changes and push
+        if: steps.version_check.outputs.needs_update == 'true'
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add plugin.php
+          git commit -m "Update version to $TAG_NAME"
+
+      - name: Re-point tag and push
+        if: steps.version_check.outputs.needs_update == 'true'
+        run: |
+          set -euo pipefail
+
+          # Delete the old tag locally and remotely
+          git tag -d "$TAG_NAME"
+          git push origin ":refs/tags/$TAG_NAME"
+
+          # Create new tag at current commit
+          git tag -a "$TAG_NAME" -m "Release $TAG_NAME"
+
+          # Push the commit and new tag
+          git push origin HEAD:${{ github.event.repository.default_branch }}
+          git push origin "$TAG_NAME"
+
+          echo "Successfully moved tag $TAG_NAME to new commit"
