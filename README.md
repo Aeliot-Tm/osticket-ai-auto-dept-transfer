@@ -15,7 +15,7 @@ This plugin for [osTicket](https://github.com/osTicket/osTicket) automatically t
 - **Multiple API providers**: OpenAI or any OpenAI-compatible API endpoint
 - **Wide model selection**: GPT-5, GPT-4.1, GPT-4o, o-series reasoning models, and custom models
 - **Temperature control** for fine-tuning AI response behavior
-- **Internal notes** for each transfer operation
+- **Internal notes** for each transfer operation, including analyzed file content (optional) and list of ignored files with reasons
 - **Flexible rule configuration** via user-friendly table interface
 - **Department-based access control** for manual transfer button
 - **Debug logging** for troubleshooting
@@ -79,7 +79,11 @@ This plugin for [osTicket](https://github.com/osTicket/osTicket) automatically t
 
 2. **Auto-transfer on ticket creation** - automatically analyze and transfer new tickets
 
-3. **Enable Debug Logging** - log processing details and AI requests for debugging
+3. **Include analyzed file content in the transfer decision message** (`show_files_content`)  
+   - When enabled, internal notes will include the extracted text from processed attachments.
+   - Always shows a list of ignored files (if any) with the reason.
+
+4. **Enable Debug Logging** - log processing details and AI requests for debugging
 
 ### Departments with Manual Transfer Button
 
@@ -159,10 +163,10 @@ The menu item is marked with an exchange icon (⇄) and appears at the top of th
 
 ### Internal Notes
 
-Each operation is recorded as an internal note:
-- Successful transfer: target department and reason
-- No matches: information that no keywords were found
-- Errors: details for debugging
+Each operation is recorded as an internal note using poster `AI Department Detector`:
+- Successful transfer: target department, reason, and (if enabled) analyzed file contents.
+- No matches or errors: reason plus (if enabled) analyzed file contents.
+- In all cases, ignored files (too large, unsupported, no text, or read errors) are listed with reasons.
 
 ## Requirements
 
