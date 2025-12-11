@@ -19,12 +19,17 @@ class AIAutoDeptTransferAnalyzer {
         $api_url = $config->get('api_url');
 
         if ($api_key && $model && $api_url) {
+            $temperature = $config->get('temperature');
+            if ('' === trim((string)$temperature)) {
+                $temperature = 0.3;
+            }
             $this->apiClient = new AIAutoDeptTransferAPIClient(
                 $api_key,
                 $model,
                 $api_url,
                 (int) $config->get('timeout', 30),
                 (bool) $config->get('enable_logging', false),
+                (float) $temperature
             );
         }
     }

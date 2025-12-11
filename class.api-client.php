@@ -9,13 +9,15 @@ class AIAutoDeptTransferAPIClient {
     private string $api_url;
     private bool $enable_logging;
     private string $model;
+    private float $temperature;
     private int $timeout;
     
-    public function __construct(string $api_key, string $model, string $api_url, int $timeout, bool $enable_logging) {
+    public function __construct(string $api_key, string $model, string $api_url, int $timeout, bool $enable_logging, float $temperature) {
         $this->api_key = trim($api_key);
         $this->api_url = $api_url;
         $this->enable_logging = $enable_logging;
         $this->model = $model;
+        $this->temperature = $temperature;
         $this->timeout = $timeout;
     }
     
@@ -174,7 +176,7 @@ class AIAutoDeptTransferAPIClient {
         $data = array(
             'model' => $model ?: $this->model,
             'messages' => $messages,
-            'temperature' => 0.3
+            'temperature' => $this->temperature
         );
         
         if ($json_mode) {
