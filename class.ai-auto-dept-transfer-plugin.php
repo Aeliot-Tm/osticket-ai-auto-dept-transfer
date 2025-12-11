@@ -51,46 +51,43 @@ class AIAutoDeptTransferPlugin extends Plugin {
                 error_log("Auto Dept Transfer - Processing new ticket #" . $ticket->getNumber());
             }
             
-            // Analyze ticket
-            $analyzer = new AIAutoDeptTransferAnalyzer($config);
-            $result = $analyzer->analyzeTicket($ticket->getId());
-            
-            if ($result['success']) {
-                // Transfer ticket
-                $transferred = $analyzer->transferTicket(
-                    $ticket,
-                    $result['dept_id'],
-                    $result['reason']
-                );
-                
-                if ($config->get('enable_logging')) {
-                    if ($transferred) {
-                        error_log("Auto Dept Transfer - Transferred ticket #" . $ticket->getNumber() . " to dept " . $result['dept_name']);
-                    } else {
-                        error_log("Auto Dept Transfer - Transfer not needed for ticket #" . $ticket->getNumber());
-                    }
-                }
-            } elseif (isset($result['no_match'])) {
-                // Log note that no match was found
-                $analyzer->logTransferFailure($ticket, $result['message']);
-                
-                if ($config->get('enable_logging')) {
-                    error_log("Auto Dept Transfer - No match found for ticket #" . $ticket->getNumber());
-                }
-            } else {
-                // Log error
-                if ($config->get('enable_logging')) {
-                    error_log("Auto Dept Transfer - Error analyzing ticket #" . $ticket->getNumber() . ": " . ($result['error'] ?? 'Unknown error'));
-                }
-                
-                $analyzer->logTransferFailure($ticket, $result['error'] ?? 'Analysis failed');
-            }
+            $this->tryTransferTicket($ticket);
             
         } catch (Exception $e) {
             if ($config->get('enable_logging')) {
                 error_log("Auto Dept Transfer - Exception processing ticket: " . $e->getMessage());
             }
         }
+    }
+    
+    public function tryTransferTicket(Ticket $ticket): array {
+        $config = $this->getConfig();
+        
+        // Analyze ticket
+        $analyzer = new AIAutoDeptTransferAnalyzer($config);
+        $result = $analyzer->analyzeTicket($ticket);
+        
+        if ($result['success']) {
+            // Transfer ticket
+            $result = array_merge($result, $analyzer->transferTicket(
+                $ticket,
+                $result['dept_id'],
+                $result['reason'],
+                $result['analyzed_files'] ?? array(),
+                $result['ignored_files'] ?? array()
+            ));
+        }
+        
+        if (!$result['success']) {
+            $analyzer->logTransferFailure(
+                $ticket,
+                $result['message'] ?? $result['error'] ?? 'Unknown error',
+                $result['analyzed_files'] ?? array(),
+                $result['ignored_files'] ?? array()
+            );
+        }
+        
+        return $result;
     }
     
     /**
