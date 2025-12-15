@@ -11,24 +11,26 @@ class AIAutoDeptTransferAPIClient {
     private string $model;
     private float $temperature;
     private int $timeout;
+    private ?string $vision_model;
     
-    public function __construct(string $api_key, string $model, string $api_url, int $timeout, bool $enable_logging, float $temperature) {
+    public function __construct(string $api_url, string $api_key, string $model, ?string $vision_model, int $timeout, bool $enable_logging, float $temperature) {
         $this->api_key = trim($api_key);
         $this->api_url = $api_url;
         $this->enable_logging = $enable_logging;
         $this->model = $model;
         $this->temperature = $temperature;
         $this->timeout = $timeout;
+        $this->vision_model = $vision_model ? trim($vision_model) : null;
     }
     
     /**
-     * Extract text from image using GPT-4 Vision API
+     * Extract text from image using a vision-capable model
      * 
      * @param string $file_data Binary file data
      * @param string $mime_type MIME type of the image
-     * @return array Result with extracted text or error
+     * @return array{success: bool, text?: string, error?: string, model?: string} Result with extracted text or error
      */
-    public function extractTextFromImage($file_data, $mime_type) {
+    public function extractTextFromImage(string $file_data, string $mime_type): array {
         // Convert to base64
         $base64_image = base64_encode($file_data);
         
@@ -39,6 +41,15 @@ class AIAutoDeptTransferAPIClient {
                 'success' => false,
                 'error' => 'Unsupported image type: ' . $mime_type
             );
+        }
+
+        // Prefer dedicated vision model, otherwise fall back to general model, and only then to default
+        $vision_model = $this->vision_model ?: $this->model;
+        if (!$vision_model) {
+            $vision_model = 'gpt-4o';
+            if ($this->enable_logging) {
+                error_log("Auto Dept Transfer - Falling back to vision model gpt-4o (configured model: {$this->model})");
+            }
         }
         
         $messages = array(
@@ -63,15 +74,18 @@ class AIAutoDeptTransferAPIClient {
             )
         );
         
-        $result = $this->makeRequest($messages, 'gpt-4o'); // Use gpt-4o for vision
+        $result = $this->makeRequest($messages, $vision_model, false);
         
         if (!$result['success']) {
             return $result;
         }
         
+        $text = is_string($result['data']) ? $result['data'] : '';
+        
         return array(
             'success' => true,
-            'text' => $result['data']
+            'text' => $text,
+            'model' => $vision_model
         );
     }
     
@@ -167,14 +181,15 @@ class AIAutoDeptTransferAPIClient {
     /**
      * Make HTTP request to OpenAI API
      * 
-     * @param array $messages Messages array for chat completion
-     * @param string $model Model to use (override default)
+     * @param array<int,array<string,string>> $messages Messages array for chat completion
+     * @param string $model Model to use
      * @param bool $json_mode Enable JSON response mode
-     * @return array Result with data or error
+     *
+     * @return array{success: bool, data?: string, error?: string } Result with data or error
      */
-    private function makeRequest($messages, $model = null, $json_mode = false) {
+    private function makeRequest(array $messages, string $model, bool $json_mode): array {
         $data = array(
-            'model' => $model ?: $this->model,
+            'model' => $model,
             'messages' => $messages,
             'temperature' => $this->temperature
         );
@@ -194,10 +209,16 @@ class AIAutoDeptTransferAPIClient {
         curl_setopt($ch, CURLOPT_POST, true);
         curl_setopt($ch, CURLOPT_POSTFIELDS, $json_data);
         curl_setopt($ch, CURLOPT_TIMEOUT, $this->timeout);
-        curl_setopt($ch, CURLOPT_HTTPHEADER, array(
+        
+        $headers = array(
             'Content-Type: application/json',
             'Authorization: Bearer ' . $this->api_key
-        ));
+        );
+        if ($json_mode) {
+            $headers[] = 'Accept: application/json';
+        }
+        
+        curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
         
         $response = curl_exec($ch);
         $http_code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
@@ -226,16 +247,36 @@ class AIAutoDeptTransferAPIClient {
             error_log("Auto Dept Transfer - API Response: " . $response);
         }
         
-        if (!isset($result['choices'][0]['message']['content'])) {
+        $content = $result['choices'][0]['message']['content'] ?? null;
+        
+        // OpenAI can return either a string or an array of content parts (for vision)
+        if (is_array($content)) {
+            $parts = array();
+            foreach ($content as $part) {
+                if (is_array($part) && ($part['type'] ?? '') === 'text' && isset($part['text'])) {
+                    $parts[] = $part['text'];
+                }
+            }
+            $content = trim(implode("\n", $parts));
+        }
+
+        if (!is_string($content)) {
             return array(
                 'success' => false,
                 'error' => 'Invalid API response format'
             );
         }
+
+        if ($content === '') {
+            return array(
+                'success' => false,
+                'error' => 'API response contained no text content'
+            );
+        }
         
         return array(
             'success' => true,
-            'data' => $result['choices'][0]['message']['content']
+            'data' => $content
         );
     }
 }

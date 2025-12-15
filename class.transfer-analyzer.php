@@ -25,9 +25,10 @@ class AIAutoDeptTransferAnalyzer {
                 $temperature = 0.3;
             }
             $this->apiClient = new AIAutoDeptTransferAPIClient(
+                $api_url,
                 $api_key,
                 $model,
-                $api_url,
+                $config->get('vision_model'),
                 (int) $config->get('timeout', 30),
                 (bool) $config->get('enable_logging', false),
                 (float) $temperature
@@ -222,17 +223,44 @@ class AIAutoDeptTransferAnalyzer {
                 error_log("Auto Dept Transfer - Processing file: $filename (type: $mime_type, size: $size)");
             }
             
+            $file_text = null;
+            $extraction_error = null;
+
             // Handle images with Vision API
             if (preg_match('/^image\/(jpeg|jpg|png|gif|webp)$/i', $mime_type)) {
-                $file_text = $this->extractTextFromImage($file);
+                $vision_result = $this->extractTextFromImage($file);
+                if (!$vision_result['success']) {
+                    $reason = 'Image text extraction failed';
+                    if (!empty($vision_result['error'])) {
+                        $reason .= ': ' . $vision_result['error'];
+                    }
+                    return array(
+                        'filename' => $filename,
+                        'ignored' => true,
+                        'reason' => $reason
+                    );
+                }
+
+                $file_text = (string) ($vision_result['text'] ?? '');
+
+                // If the Vision API explicitly reports no text, keep that reason
+                if ('' !== $file_text && strcasecmp(trim($file_text), 'No text found') === 0) {
+                    return array(
+                        'filename' => $filename,
+                        'ignored' => true,
+                        'reason' => 'Vision API reported no readable text in the image'
+                    );
+                }
             }
             // Handle PDF files
             elseif ($mime_type == 'application/pdf') {
                 $file_text = $this->extractTextFromPDF($file);
+                $extraction_error = 'Unable to extract text from PDF';
             }
             // Handle Word documents
             elseif (preg_match('/word|officedocument\.wordprocessing/i', $mime_type)) {
                 $file_text = $this->extractTextFromWord($file);
+                $extraction_error = 'Unable to extract text from Word document';
             }
             else {
                 if ($this->config->get('enable_logging')) {
@@ -246,14 +274,14 @@ class AIAutoDeptTransferAnalyzer {
             }
             
             if (null !== $file_text) {
-                $file_text = trim($file_text);
+                $file_text = trim((string) $file_text);
             }
             
             if (!$file_text) {
                 return array(
                     'filename' => $filename,
                     'ignored' => true,
-                    'reason' => 'No text content found in file'
+                    'reason' => $extraction_error ?: 'No text content returned after extraction'
                 );
             }
             
@@ -311,14 +339,21 @@ class AIAutoDeptTransferAnalyzer {
             if ($this->config->get('enable_logging')) {
                 error_log("Auto Dept Transfer - Successfully extracted " . strlen($result['text']) . " bytes from image using Vision API");
             }
-            return $result['text'];
+            return array(
+                'success' => true,
+                'text' => $result['text'] ?? '',
+                'model' => $result['model'] ?? null
+            );
         }
         
         if ($this->config->get('enable_logging')) {
             error_log("Auto Dept Transfer - Image extraction failed: " . ($result['error'] ?? 'Unknown error'));
         }
         
-        return null;
+        return array(
+            'success' => false,
+            'error' => $result['error'] ?? 'Unknown error'
+        );
     }
     
     /**
