@@ -64,8 +64,12 @@
                 }
                 
                 if (response.success) {
+                    var deptName = response.dept_name;
+                    if (response.is_default_dept === true) {
+                        deptName = deptName + ' (default department)';
+                    }
                     showNotification(
-                        'Ticket successfully transferred to <strong>' + response.dept_name + '</strong>. ' +
+                        'Ticket successfully transferred to <strong>' + deptName + '</strong>. ' +
                         'Reason: ' + response.reason,
                         'success'
                     );

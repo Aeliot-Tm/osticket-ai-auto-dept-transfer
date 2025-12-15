@@ -205,6 +205,24 @@ class AIAutoDeptTransferConfig extends PluginConfig {
                 'default' => '[]',
                 'hint' => __('Configure department transfer rules. Use the table below to add departments and keywords.')
             )),
+            'default_department' => new ChoiceField(array(
+                'label' => __('Default Department'),
+                'required' => false,
+                'default' => '',
+                'choices' => (function() {
+                    $choices = array('' => '-- None --');
+                    if (class_exists('Dept')) {
+                        $depts = Dept::getDepartments(array('activeonly' => true), true, false);
+                        if ($depts) {
+                            foreach ($depts as $id => $name) {
+                                $choices[$id] = $name;
+                            }
+                        }
+                    }
+                    return $choices;
+                })(),
+                'hint' => __('Department to use when no matching keywords are found in ticket content. Leave empty to skip transfer if no rules match.')
+            )),
             'auto_transfer' => new BooleanField(array(
                 'label' => __('Auto-transfer on ticket creation'),
                 'default' => true,

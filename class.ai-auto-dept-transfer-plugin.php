@@ -74,7 +74,8 @@ class AIAutoDeptTransferPlugin extends Plugin {
                 $result['dept_id'],
                 $result['reason'],
                 $result['analyzed_files'] ?? array(),
-                $result['ignored_files'] ?? array()
+                $result['ignored_files'] ?? array(),
+                $result['is_default_dept'] ?? false,
             ));
         }
         
