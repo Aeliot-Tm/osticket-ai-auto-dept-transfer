@@ -252,6 +252,11 @@ class AIAutoDeptTransferAnalyzer {
                     );
                 }
             }
+            // Handle plain text files
+            elseif (preg_match('/^text\//i', $mime_type)) {
+                $file_text = $file->getData();
+                $extraction_error = 'Unable to extract text from plain text file';
+            }
             // Handle PDF files
             elseif ($mime_type == 'application/pdf') {
                 $file_text = $this->extractTextFromPDF($file);
