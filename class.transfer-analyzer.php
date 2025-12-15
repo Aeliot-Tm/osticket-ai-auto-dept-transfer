@@ -81,6 +81,26 @@ class AIAutoDeptTransferAnalyzer {
             $matches = $this->findMatchingDepartments($content, $rules);
             
             if (empty($matches)) {
+                // Check if default department is configured
+                $default_dept_id = $this->config->get('default_department');
+                if ($default_dept_id && !empty(trim((string)$default_dept_id))) {
+                    $default_dept_id = intval($default_dept_id);
+                    $default_dept = Dept::lookup($default_dept_id);
+                    
+                    if ($default_dept && $default_dept->isActive()) {
+                        return array(
+                            'success' => true,
+                            'dept_id' => $default_dept_id,
+                            'dept_name' => $default_dept->getName(),
+                            'reason' => 'No matching keywords found. Using default department.',
+                            'is_default_dept' => true,
+                            'confidence' => 'default',
+                            'analyzed_files' => $analyzed_files,
+                            'ignored_files' => $ignored_files
+                        );
+                    }
+                }
+                
                 return array(
                     'success' => false,
                     'no_match' => true,
@@ -162,9 +182,17 @@ class AIAutoDeptTransferAnalyzer {
      * @param string $reason Reason for transfer
      * @param array $analyzed_files Array of analyzed files with 'filename' and 'content' keys
      * @param array $ignored_files Array of ignored files with 'filename' and 'reason' keys
+     * @param bool $is_default_dept Whether this is a default department transfer
      * @return array{success: bool, message: string } Success status
      */
-    public function transferTicket($ticket, $dept_id, $reason, $analyzed_files = array(), $ignored_files = array()) {
+    public function transferTicket(
+        Ticket $ticket,
+        int $dept_id,
+        string $reason,
+        array $analyzed_files,
+        array $ignored_files,
+        bool $is_default_dept
+    ): array {
         try {
             $current_dept_id = $ticket->getDeptId();
             
@@ -204,6 +232,11 @@ class AIAutoDeptTransferAnalyzer {
                 htmlspecialchars($reason)
             );
             
+            // Add note about default department if used
+            if ($is_default_dept) {
+                $note_body .= '<br><br><strong>Note:</strong> No matching keywords were found in ticket content. Ticket was transferred to default department.';
+            }
+            
             // Add file contents if option is enabled
             $note_body .= $this->getAnalyzedFilesNote($analyzed_files);
             
@@ -212,7 +245,12 @@ class AIAutoDeptTransferAnalyzer {
             
             $ticket->logNote($note_title, $note_body,  $this->notePoster, false);
             
-            return ['success' => true, 'message' => "Successfully transferred ticket #{$ticket->getNumber()} to {$target_dept->getName()}"];
+            $message = "Successfully transferred ticket #{$ticket->getNumber()} to {$target_dept->getName()}";
+            if ($is_default_dept) {
+                $message .= " (default department)";
+            }
+            
+            return ['success' => true, 'message' => $message];
             
         } catch (Exception $e) {
             if ($this->config->get('enable_logging')) {
