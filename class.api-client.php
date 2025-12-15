@@ -11,14 +11,16 @@ class AIAutoDeptTransferAPIClient {
     private string $model;
     private float $temperature;
     private int $timeout;
+    private ?string $vision_model;
     
-    public function __construct(string $api_key, string $model, string $api_url, int $timeout, bool $enable_logging, float $temperature) {
+    public function __construct(string $api_url, string $api_key, string $model, ?string $vision_model, int $timeout, bool $enable_logging, float $temperature) {
         $this->api_key = trim($api_key);
         $this->api_url = $api_url;
         $this->enable_logging = $enable_logging;
         $this->model = $model;
         $this->temperature = $temperature;
         $this->timeout = $timeout;
+        $this->vision_model = $vision_model ? trim($vision_model) : null;
     }
     
     /**
@@ -41,9 +43,9 @@ class AIAutoDeptTransferAPIClient {
             );
         }
 
-        // Prefer configured model if it likely supports vision, otherwise fall back
-        $vision_model = $this->model;
-        if (!$vision_model || !preg_match('/4o|vision|4\\.1|o1|o3/i', $vision_model)) {
+        // Prefer dedicated vision model, otherwise fall back to general model, and only then to default
+        $vision_model = $this->vision_model ?: $this->model;
+        if (!$vision_model) {
             $vision_model = 'gpt-4o';
             if ($this->enable_logging) {
                 error_log("Auto Dept Transfer - Falling back to vision model gpt-4o (configured model: {$this->model})");

@@ -25,9 +25,10 @@ class AIAutoDeptTransferAnalyzer {
                 $temperature = 0.3;
             }
             $this->apiClient = new AIAutoDeptTransferAPIClient(
+                $api_url,
                 $api_key,
                 $model,
-                $api_url,
+                $config->get('vision_model'),
                 (int) $config->get('timeout', 30),
                 (bool) $config->get('enable_logging', false),
                 (float) $temperature

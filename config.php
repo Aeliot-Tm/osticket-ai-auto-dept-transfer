@@ -66,6 +66,38 @@ class AIAutoDeptTransferModelWidget extends Widget {
     }
 }
 
+class AIAutoDeptTransferVisionModelField extends TextboxField {
+    static $widget = AIAutoDeptTransferVisionModelWidget::class;
+}
+
+class AIAutoDeptTransferVisionModelWidget extends Widget {
+    function render($options=array()) {
+        $name = $this->name;
+        $value = $this->value;
+        $input_id = 'vision_model_text_' . uniqid();
+        $datalist_id = $input_id . '_datalist';
+        ?>
+        <input type="text"
+               id="<?php echo $input_id; ?>"
+               name="<?php echo $name; ?>"
+               class="vision-model-text-input"
+               list="<?php echo $datalist_id; ?>"
+               value="<?php echo Format::htmlchars($value); ?>"
+               placeholder="Enter vision model (e.g., gpt-4o)"
+               style="width: 350px; padding: 5px;" />
+        <datalist id="<?php echo $datalist_id; ?>"></datalist>
+        <script type="text/javascript"><?php readfile(__DIR__ . '/js/config-vision-model-autocomplete.js'); ?></script>
+        <script type="text/javascript">
+            (function() {
+                if (window.AIADTVisionModelAutocomplete && typeof window.AIADTVisionModelAutocomplete.setup === 'function') {
+                    window.AIADTVisionModelAutocomplete.setup('<?php echo $input_id; ?>', '<?php echo $datalist_id; ?>');
+                }
+            })();
+        </script>
+        <?php
+    }
+}
+
 class AIAutoDeptTransferRulesField extends TextareaField {
     static $widget = 'AIAutoDeptTransferRulesWidget';
 }
@@ -207,6 +239,12 @@ class AIAutoDeptTransferConfig extends PluginConfig {
                 'default' => 'gpt-4o-mini',
                 'required' => true,
                 'hint' => __('Select or enter the model name to use for analysis')
+            )),
+            'vision_model' => new AIAutoDeptTransferVisionModelField(array(
+                'label' => __('Vision Model'),
+                'default' => 'gpt-4o',
+                'required' => false,
+                'hint' => __('Optional: Vision-capable model for image text extraction (e.g., gpt-4o). Autocomplete suggests common OpenAI vision models, but any model name is allowed.')
             )),
             'temperature' => new TextboxField(array(
                 'label' => __('Temperature'),
