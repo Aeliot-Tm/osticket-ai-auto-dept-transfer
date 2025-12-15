@@ -14,10 +14,11 @@ class AIAutoDeptTransferAnalyzer {
 
     public function __construct(AIAutoDeptTransferConfig $config) {
         $this->config = $config;
-
-        $api_key = $config->get('api_key');
-        $model = $config->get('model');
-        $api_url = $config->get('api_url');
+        
+        // Only initialize API client if credentials are provided
+        $api_key = trim((string)$config->get('api_key'));
+        $api_url = trim((string)$config->get('api_url'));
+        $model = trim((string)$config->get('model'));
 
         if ($api_key && $model && $api_url) {
             $temperature = $config->get('temperature');
@@ -128,6 +129,101 @@ class AIAutoDeptTransferAnalyzer {
     }
     
     /**
+     * Log a note when transfer cannot be performed
+     *
+     * @param Ticket $ticket
+     * @param string $reason Reason why transfer failed
+     */
+    public function logTransferFailure($ticket, $reason, $analyzed_files, $ignored_files) {
+        try {
+            $note_title = 'Auto Department Transfer - Not Performed';
+            $note_body = 'Automatic department transfer was not performed.<br><br>Reason: ' . htmlspecialchars($reason);
+            
+            // Add file contents if option is enabled
+            $note_body .= $this->getAnalyzedFilesNote($analyzed_files);
+            
+            // Add ignored files list (always show if there are ignored files)
+            $note_body .= $this->getIgnoredFilesNote($ignored_files);
+            
+            $ticket->logNote($note_title, $note_body, $this->notePoster, false);
+            
+        } catch (Exception $e) {
+            if ($this->config->get('enable_logging')) {
+                error_log("Auto Dept Transfer - Failed to log note: " . $e->getMessage());
+            }
+        }
+    }
+    
+    /**
+     * Transfer ticket to new department and log note
+     *
+     * @param Ticket $ticket
+     * @param int $dept_id Target department ID
+     * @param string $reason Reason for transfer
+     * @param array $analyzed_files Array of analyzed files with 'filename' and 'content' keys
+     * @param array $ignored_files Array of ignored files with 'filename' and 'reason' keys
+     * @return array{success: bool, message: string } Success status
+     */
+    public function transferTicket($ticket, $dept_id, $reason, $analyzed_files = array(), $ignored_files = array()) {
+        try {
+            $current_dept_id = $ticket->getDeptId();
+            
+            // Don't transfer if already in target department
+            if ($current_dept_id == $dept_id) {
+                if ($this->config->get('enable_logging')) {
+                    error_log("Auto Dept Transfer - Ticket already in department $dept_id");
+                }
+                
+                return ['success' => false, 'message' => 'Ticket already in target department'];
+            }
+            
+            // Get department names
+            $current_dept = $ticket->getDept();
+            $target_dept = Dept::lookup($dept_id);
+            
+            if (!$target_dept || !$target_dept->isActive()) {
+                if ($this->config->get('enable_logging')) {
+                    error_log("Auto Dept Transfer - Target department not found or inactive: $dept_id");
+                }
+                
+                return ['success' => false, 'message' => "Target department ($dept_id) not found or inactive"];
+            }
+            
+            // Perform transfer
+            $success = $ticket->setDeptId($dept_id);
+            if (!$success){
+                return ['success' => false, 'message' => 'Ticket transfer failed'];
+            }
+            
+            // Log internal note
+            $note_title = 'Auto Department Transfer';
+            $note_body = sprintf(
+                'Ticket automatically transferred from "%s" to "%s".<br><br>Reason: %s',
+                $current_dept->getName(),
+                $target_dept->getName(),
+                htmlspecialchars($reason)
+            );
+            
+            // Add file contents if option is enabled
+            $note_body .= $this->getAnalyzedFilesNote($analyzed_files);
+            
+            // Add ignored files list (always show if there are ignored files)
+            $note_body .= $this->getIgnoredFilesNote($ignored_files);
+            
+            $ticket->logNote($note_title, $note_body,  $this->notePoster, false);
+            
+            return ['success' => true, 'message' => "Successfully transferred ticket #{$ticket->getNumber()} to {$target_dept->getName()}"];
+            
+        } catch (Exception $e) {
+            if ($this->config->get('enable_logging')) {
+                error_log("Auto Dept Transfer - Transfer failed: " . $e->getMessage());
+            }
+            
+            return ['success' => false, 'message' => 'Internal exception happened. See log for details.'];
+        }
+    }
+    
+    /**
      * Extract all content from ticket including subject, body, and attachments
      * 
      * @param Ticket $ticket
@@ -184,12 +280,31 @@ class AIAutoDeptTransferAnalyzer {
     }
     
     /**
+     * Format file size in human-readable format
+     *
+     * @param int $bytes File size in bytes
+     * @return string Formatted size
+     */
+    private function formatFileSize($bytes) {
+        if ($bytes >= 1073741824) {
+            return number_format($bytes / 1073741824, 2) . ' GB';
+        } elseif ($bytes >= 1048576) {
+            return number_format($bytes / 1048576, 2) . ' MB';
+        } elseif ($bytes >= 1024) {
+            return number_format($bytes / 1024, 2) . ' KB';
+        } else {
+            return $bytes . ' bytes';
+        }
+    }
+    
+    /**
      * Extract text from attachment file
      * 
-     * @param object $attachment Attachment object
-     * @return array|null Array with 'filename', 'content' (if successful), 'ignored' and 'reason' (if ignored) keys, or null
+     * @param Attachment $attachment Attachment object
+     *
+     * @return array{ignored: bool, filename: string, content?: string, reason?: string}
      */
-    private function processAttachment($attachment) {
+    private function processAttachment($attachment): array {
         try {
             $file = $attachment->getFile();
             if (!$file) {
@@ -240,9 +355,9 @@ class AIAutoDeptTransferAnalyzer {
                         'reason' => $reason
                     );
                 }
-
+                
                 $file_text = (string) ($vision_result['text'] ?? '');
-
+                
                 // If the Vision API explicitly reports no text, keep that reason
                 if ('' !== $file_text && strcasecmp(trim($file_text), 'No text found') === 0) {
                     return array(
@@ -310,27 +425,11 @@ class AIAutoDeptTransferAnalyzer {
     }
     
     /**
-     * Format file size in human-readable format
-     *
-     * @param int $bytes File size in bytes
-     * @return string Formatted size
-     */
-    private function formatFileSize($bytes) {
-        if ($bytes >= 1073741824) {
-            return number_format($bytes / 1073741824, 2) . ' GB';
-        } elseif ($bytes >= 1048576) {
-            return number_format($bytes / 1048576, 2) . ' MB';
-        } elseif ($bytes >= 1024) {
-            return number_format($bytes / 1024, 2) . ' KB';
-        } else {
-            return $bytes . ' bytes';
-        }
-    }
-    
-    /**
      * Extract text from image using AI
+     *
+     * @return array{success: bool, text?: string, error?: string}
      */
-    private function extractTextFromImage($file) {
+    private function extractTextFromImage($file): array {
         $file_data = $file->getData();
         $mime_type = $file->getType();
         
@@ -347,7 +446,6 @@ class AIAutoDeptTransferAnalyzer {
             return array(
                 'success' => true,
                 'text' => $result['text'] ?? '',
-                'model' => $result['model'] ?? null
             );
         }
         
@@ -586,101 +684,6 @@ class AIAutoDeptTransferAnalyzer {
         });
         
         return $matches;
-    }
-    
-    /**
-     * Transfer ticket to new department and log note
-     * 
-     * @param Ticket $ticket
-     * @param int $dept_id Target department ID
-     * @param string $reason Reason for transfer
-     * @param array $analyzed_files Array of analyzed files with 'filename' and 'content' keys
-     * @param array $ignored_files Array of ignored files with 'filename' and 'reason' keys
-     * @return array{success: bool, message: string } Success status
-     */
-    public function transferTicket($ticket, $dept_id, $reason, $analyzed_files = array(), $ignored_files = array()) {
-        try {
-            $current_dept_id = $ticket->getDeptId();
-            
-            // Don't transfer if already in target department
-            if ($current_dept_id == $dept_id) {
-                if ($this->config->get('enable_logging')) {
-                    error_log("Auto Dept Transfer - Ticket already in department $dept_id");
-                }
-                
-                return ['success' => false, 'message' => 'Ticket already in target department'];
-            }
-            
-            // Get department names
-            $current_dept = $ticket->getDept();
-            $target_dept = Dept::lookup($dept_id);
-            
-            if (!$target_dept || !$target_dept->isActive()) {
-                if ($this->config->get('enable_logging')) {
-                    error_log("Auto Dept Transfer - Target department not found or inactive: $dept_id");
-                }
-                
-                return ['success' => false, 'message' => "Target department ($dept_id) not found or inactive"];
-            }
-            
-            // Perform transfer
-            $success = $ticket->setDeptId($dept_id);
-            if (!$success){
-                return ['success' => false, 'message' => 'Ticket transfer failed'];
-            }
-            
-            // Log internal note
-            $note_title = 'Auto Department Transfer';
-            $note_body = sprintf(
-                'Ticket automatically transferred from "%s" to "%s".<br><br>Reason: %s',
-                $current_dept->getName(),
-                $target_dept->getName(),
-                htmlspecialchars($reason)
-            );
-            
-            // Add file contents if option is enabled
-            $note_body .= $this->getAnalyzedFilesNote($analyzed_files);
-            
-            // Add ignored files list (always show if there are ignored files)
-            $note_body .= $this->getIgnoredFilesNote($ignored_files);
-            
-            $ticket->logNote($note_title, $note_body,  $this->notePoster, false);
-            
-            return ['success' => true, 'message' => "Successfully transferred ticket #{$ticket->getNumber()} to {$target_dept->getName()}"];
-            
-        } catch (Exception $e) {
-            if ($this->config->get('enable_logging')) {
-                error_log("Auto Dept Transfer - Transfer failed: " . $e->getMessage());
-            }
-            
-            return ['success' => false, 'message' => 'Internal exception happened. See log for details.'];
-        }
-    }
-    
-    /**
-     * Log a note when transfer cannot be performed
-     * 
-     * @param Ticket $ticket
-     * @param string $reason Reason why transfer failed
-     */
-    public function logTransferFailure($ticket, $reason, $analyzed_files, $ignored_files) {
-        try {
-            $note_title = 'Auto Department Transfer - Not Performed';
-            $note_body = 'Automatic department transfer was not performed.<br><br>Reason: ' . htmlspecialchars($reason);
-            
-            // Add file contents if option is enabled
-            $note_body .= $this->getAnalyzedFilesNote($analyzed_files);
-            
-            // Add ignored files list (always show if there are ignored files)
-            $note_body .= $this->getIgnoredFilesNote($ignored_files);
-            
-            $ticket->logNote($note_title, $note_body, $this->notePoster, false);
-            
-        } catch (Exception $e) {
-            if ($this->config->get('enable_logging')) {
-                error_log("Auto Dept Transfer - Failed to log note: " . $e->getMessage());
-            }
-        }
     }
     
     /**

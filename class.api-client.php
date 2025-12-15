@@ -85,7 +85,6 @@ class AIAutoDeptTransferAPIClient {
         return array(
             'success' => true,
             'text' => $text,
-            'model' => $vision_model
         );
     }
     
@@ -185,7 +184,7 @@ class AIAutoDeptTransferAPIClient {
      * @param string $model Model to use
      * @param bool $json_mode Enable JSON response mode
      *
-     * @return array{success: bool, data?: string, error?: string } Result with data or error
+     * @return array{success: bool, data?: string, error?: string} Result with data or error
      */
     private function makeRequest(array $messages, string $model, bool $json_mode): array {
         $data = array(
@@ -280,4 +279,3 @@ class AIAutoDeptTransferAPIClient {
         );
     }
 }
-
