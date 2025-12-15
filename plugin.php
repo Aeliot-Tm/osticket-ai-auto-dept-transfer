@@ -2,7 +2,7 @@
 
 return array(
     'id' =>             'osticket:ai-auto-dept-transfer',
-    'version' =>        '1.2.0',
+    'version' =>        '1.3.0',
     'name' =>           'AI Auto Department Transfer',
     'author' =>         'Anatoly Melnikov',
     'description' =>    'Automatically transfer tickets to appropriate departments based on keywords in subject, body, and attachments using AI.',
