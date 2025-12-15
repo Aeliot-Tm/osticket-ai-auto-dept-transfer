@@ -205,6 +205,13 @@ class AIAutoDeptTransferConfig extends PluginConfig {
                 'default' => '[]',
                 'hint' => __('Configure department transfer rules. Use the table below to add departments and keywords.')
             )),
+            'auto_transfer' => new BooleanField(array(
+                'label' => __('Auto-transfer on ticket creation'),
+                'default' => true,
+                'configuration' => array(
+                        'desc' => __('Automatically analyze and transfer new tickets')
+                )
+            )),
             'api_provider' => new ChoiceField(array(
                 'label' => __('API Provider'),
                 'default' => 'openai',
@@ -277,13 +284,6 @@ class AIAutoDeptTransferConfig extends PluginConfig {
                     'length' => 3
                 ),
                 'hint' => __('Maximum file size to process for text extraction')
-            )),
-            'auto_transfer' => new BooleanField(array(
-                'label' => __('Auto-transfer on ticket creation'),
-                'default' => true,
-                'configuration' => array(
-                        'desc' => __('Automatically analyze and transfer new tickets')
-                )
             )),
             'allowed_depts' => new AIAutoDeptTransferDepartmentMultiselectField(array(
                 'label' => __('Departments with Manual Transfer Button'),
