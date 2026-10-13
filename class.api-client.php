@@ -1,5 +1,7 @@
 <?php
 
+require_once(__DIR__ . '/class.model-capabilities.php');
+
 /**
  * Handles file processing and AI-based department selection using OpenAI API
  */
@@ -10,15 +12,17 @@ class AIAutoDeptTransferAPIClient {
     private bool $enable_logging;
     private string $model;
     private float $temperature;
+    private string $reasoning_effort;
     private int $timeout;
     private ?string $vision_model;
     
-    public function __construct(string $api_url, string $api_key, string $model, ?string $vision_model, int $timeout, bool $enable_logging, float $temperature) {
+    public function __construct(string $api_url, string $api_key, string $model, ?string $vision_model, int $timeout, bool $enable_logging, float $temperature, string $reasoning_effort = 'none') {
         $this->api_key = trim($api_key);
         $this->api_url = $api_url;
         $this->enable_logging = $enable_logging;
         $this->model = $model;
         $this->temperature = $temperature;
+        $this->reasoning_effort = $reasoning_effort;
         $this->timeout = $timeout;
         $this->vision_model = $vision_model ? trim($vision_model) : null;
     }
@@ -46,9 +50,9 @@ class AIAutoDeptTransferAPIClient {
         // Prefer dedicated vision model, otherwise fall back to general model, and only then to default
         $vision_model = $this->vision_model ?: $this->model;
         if (!$vision_model) {
-            $vision_model = 'gpt-4o';
+            $vision_model = 'gpt-6-luna';
             if ($this->enable_logging) {
-                error_log("Auto Dept Transfer - Falling back to vision model gpt-4o (configured model: {$this->model})");
+                error_log("Auto Dept Transfer - Falling back to vision model gpt-6-luna (configured model: {$this->model})");
             }
         }
         
@@ -189,9 +193,16 @@ class AIAutoDeptTransferAPIClient {
     private function makeRequest(array $messages, string $model, bool $json_mode): array {
         $data = array(
             'model' => $model,
-            'messages' => $messages,
-            'temperature' => $this->temperature
+            'messages' => $messages
         );
+        // Use the request model: OCR may use a different model from analysis.
+        $effort = AIAutoDeptTransferModelCapabilities::reasoningEffort($model, $this->reasoning_effort);
+        if ($effort !== null) {
+            $data['reasoning_effort'] = $effort;
+        }
+        if (AIAutoDeptTransferModelCapabilities::supportsTemperature($model, $effort)) {
+            $data['temperature'] = $this->temperature;
+        }
         
         if ($json_mode) {
             $data['response_format'] = array('type' => 'json_object');

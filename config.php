@@ -2,6 +2,7 @@
 
 require_once(INCLUDE_DIR . 'class.plugin.php');
 require_once(INCLUDE_DIR . 'class.forms.php');
+require_once(__DIR__ . '/class.api-client.php');
 
 /**
  * Custom field for Model selection that switches between dropdown and textbox
@@ -17,39 +18,14 @@ class AIAutoDeptTransferModelWidget extends Widget {
         $config = $this->field->getConfiguration();
 
         // OpenAI models list
-        $models = array(
-            // GPT-5 series (latest)
-            'gpt-5.2' => 'GPT-5.2 (Latest, improved reasoning)',
-            'gpt-5.1' => 'GPT-5.1 (Coding & agentic tasks)',
-            'gpt-5.1-codex' => 'GPT-5.1 Codex (Optimized for code)',
-            'gpt-5.1-codex-mini' => 'GPT-5.1 Codex Mini',
-            'gpt-5.1-codex-max' => 'GPT-5.1 Codex Max (Project-scale coding)',
-            'gpt-5-mini' => 'GPT-5 Mini (Fast, 400K context)',
-            'gpt-5-nano' => 'GPT-5 Nano (Fastest, cheapest)',
-            // Reasoning models (o-series) - think longer before responding
-            'o3' => 'o3 (Most advanced reasoning)',
-            'o3-mini' => 'o3-mini (Cost-efficient reasoning)',
-            'o4-mini' => 'o4-mini (Latest compact reasoning)',
-            'o1' => 'o1 (Extended reasoning)',
-            'o1-mini' => 'o1-mini (Compact reasoning)',
-            // GPT-4.1 series - improved coding & long context
-            'gpt-4.1' => 'GPT-4.1 (Best for coding, 1M context)',
-            'gpt-4.1-mini' => 'GPT-4.1 Mini (Balanced)',
-            'gpt-4.1-nano' => 'GPT-4.1 Nano (Fastest)',
-            // GPT-4o series - multimodal
-            'gpt-4o' => 'GPT-4o (Multimodal, capable)',
-            'gpt-4o-mini' => 'GPT-4o Mini (Fast and affordable)',
-            // Legacy models
-            'gpt-4-turbo' => 'GPT-4 Turbo (Legacy)',
-            'gpt-3.5-turbo' => 'GPT-3.5 Turbo (Cheapest, legacy)'
-        );
+        $models = AIAutoDeptTransferModelCapabilities::MODELS;
         ?>
         <input type="hidden" name="<?php echo $name; ?>" id="model_value" value="<?php echo Format::htmlchars($value); ?>" />
 
         <!-- Dropdown for OpenAI -->
         <select id="model_select" class="model-select-dropdown" style="width: 350px;">
             <?php foreach ($models as $model_id => $model_name): ?>
-                <option value="<?php echo $model_id; ?>" <?php if ($value === $model_id) echo 'selected="selected"'; ?>>
+                <option value="<?php echo $model_id; ?>" <?php if ($value === $model_id) echo 'selected="selected"'; ?> <?php if (AIAutoDeptTransferModelCapabilities::responsesOnly($model_id)) echo 'disabled="disabled"'; ?>>
                     <?php echo Format::htmlchars($model_name); ?>
                 </option>
             <?php endforeach; ?>
@@ -58,7 +34,7 @@ class AIAutoDeptTransferModelWidget extends Widget {
         <!-- Textbox for Custom -->
         <input type="text" id="model_text" class="model-text-input"
                value="<?php echo Format::htmlchars($value); ?>"
-               placeholder="Enter model name (e.g., gpt-4o-mini)"
+               placeholder="Enter model name (e.g., gpt-6-luna)"
                style="width: 350px; padding: 5px;" />
 
         <script type="text/javascript"><?php readfile(__DIR__ . '/js/config-api-provider.js'); ?></script>
@@ -83,7 +59,7 @@ class AIAutoDeptTransferVisionModelWidget extends Widget {
                class="vision-model-text-input"
                list="<?php echo $datalist_id; ?>"
                value="<?php echo Format::htmlchars($value); ?>"
-               placeholder="Enter vision model (e.g., gpt-4o)"
+               placeholder="Enter vision model (e.g., gpt-6-luna)"
                style="width: 350px; padding: 5px;" />
         <datalist id="<?php echo $datalist_id; ?>"></datalist>
         <script type="text/javascript"><?php readfile(__DIR__ . '/js/config-vision-model-autocomplete.js'); ?></script>
@@ -261,15 +237,36 @@ class AIAutoDeptTransferConfig extends PluginConfig {
             )),
             'model' => new AIAutoDeptTransferModelField(array(
                 'label' => __('Model Name'),
-                'default' => 'gpt-4o-mini',
+                'default' => 'gpt-6-luna',
                 'required' => true,
                 'hint' => __('Select or enter the model name to use for analysis')
             )),
+            'reasoning_effort' => new ChoiceField(array(
+                'label' => __('Reasoning Effort'),
+                'default' => 'none',
+                'configuration' => array(
+                    'classes' => 'reasoning-effort-select',
+                    'data' => array(
+                        'reasoning-rules' => json_encode(AIAutoDeptTransferModelCapabilities::REASONING_RULES),
+                        'unavailable-hint' => __('Reasoning configuration is not available for the selected models.')
+                    )
+                ),
+                'choices' => array(
+                    'none' => __('None'),
+                    'minimal' => __('Minimal'),
+                    'low' => __('Low'),
+                    'medium' => __('Medium'),
+                    'high' => __('High'),
+                    'xhigh' => __('Extra High'),
+                    'max' => __('Maximum')
+                ),
+                'hint' => __('Reasoning level for analysis and image text extraction with supported models. Higher levels may increase response time and cost.')
+            )),
             'vision_model' => new AIAutoDeptTransferVisionModelField(array(
                 'label' => __('Vision Model'),
-                'default' => 'gpt-4o',
+                'default' => 'gpt-6-luna',
                 'required' => false,
-                'hint' => __('Optional: Vision-capable model for image text extraction (e.g., gpt-4o). Autocomplete suggests common OpenAI vision models, but any model name is allowed.')
+                'hint' => __('Optional: Vision-capable model for image text extraction (e.g., gpt-6-luna). Autocomplete suggests common OpenAI vision models, but any model name is allowed.')
             )),
             'temperature' => new TextboxField(array(
                 'label' => __('Temperature'),
@@ -279,7 +276,7 @@ class AIAutoDeptTransferConfig extends PluginConfig {
                     'size' => 10,
                     'length' => 4
                 ),
-                'hint' => __('Advanced: Controls response randomness (0.0-2.0). Lower = more deterministic. Default: 0.3')
+                'hint' => __('Advanced: Controls response randomness (0.0-2.0). Default: 0.3. For supported reasoning models, used only when Reasoning Effort is None.')
             )),
             'timeout' => new TextboxField(array(
                 'label' => __('API Timeout (seconds)'),
@@ -383,6 +380,19 @@ class AIAutoDeptTransferConfig extends PluginConfig {
                 $errors['temperature'] = __('Value is out of range');
                 $result = false;
             }
+        }
+
+        $efforts = AIAutoDeptTransferModelCapabilities::commonReasoningEfforts(
+            (string) ($config['model'] ?? ''),
+            (string) ($config['vision_model'] ?? '')
+        );
+        $config['reasoning_effort'] = $config['reasoning_effort'] ?? ($efforts[0] ?? 'none');
+        if (!in_array($config['reasoning_effort'], array('none', 'minimal', 'low', 'medium', 'high', 'xhigh', 'max'), true)) {
+            $errors['reasoning_effort'] = __('Invalid reasoning effort');
+            $result = false;
+        } elseif ($efforts && !in_array($config['reasoning_effort'], $efforts, true)) {
+            $errors['reasoning_effort'] = __('This reasoning effort is not supported by the selected models.');
+            $result = false;
         }
 
         return $result;

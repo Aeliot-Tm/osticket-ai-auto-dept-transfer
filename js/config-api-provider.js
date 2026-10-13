@@ -30,10 +30,58 @@
     var $modelValue = $('#model_value')
     var $modelSelect = $('#model_select')
     var $modelText = $('#model_text')
+    var $reasoning = $('.reasoning-effort-select')
+    var $visionModel = $('.vision-model-text-input')
 
     if (!$provider || !$provider.length) {
       // Field not found - probably not on the config page
       return
+    }
+
+    var $reasoningValue = $('<input type="hidden">')
+      .attr('name', $reasoning.attr('name'))
+      .prop('disabled', true)
+      .insertAfter($reasoning)
+    var $reasoningUnavailable = $('<div class="reasoning-unavailable-hint">')
+      .text($reasoning.attr('data-unavailable-hint'))
+      .insertAfter($reasoningValue)
+    var reasoningRules = JSON.parse($reasoning.attr('data-reasoning-rules') || '[]')
+
+    function modelReasoningEfforts (model) {
+      for (var index = 0; index < reasoningRules.length; index++) {
+        var rule = reasoningRules[index]
+        if (new RegExp(rule.pattern).test(model)) {
+          return rule.efforts
+        }
+      }
+      return []
+    }
+
+    function updateReasoningAvailability () {
+      if (!$reasoning.length) {
+        return
+      }
+      var model = ($modelValue.val() || '').trim()
+      var visionModel = ($visionModel.val() || '').trim()
+      var analysisEfforts = modelReasoningEfforts(model)
+      var visionEfforts = modelReasoningEfforts(visionModel)
+      var efforts = analysisEfforts.length ? analysisEfforts : visionEfforts
+      if (analysisEfforts.length && visionEfforts.length) {
+        efforts = analysisEfforts.filter(function (effort) {
+          return visionEfforts.indexOf(effort) !== -1
+        })
+      }
+      var supported = efforts.length > 0
+      $reasoning.find('option').each(function () {
+        var allowed = !supported || efforts.indexOf(this.value) !== -1
+        $(this).prop('disabled', !allowed).prop('hidden', !allowed)
+      })
+      if (supported && efforts.indexOf($reasoning.val()) === -1) {
+        $reasoning.val(efforts[0])
+      }
+      $reasoning.prop('disabled', !supported)
+      $reasoningValue.val($reasoning.val()).prop('disabled', !!supported)
+      $reasoningUnavailable.toggle(!supported)
     }
 
     function updateFieldVisibility () {
@@ -78,19 +126,24 @@
         }
         $modelValue.val(selectedValue)
       }
+      updateReasoningAvailability()
     }
 
     // Sync select dropdown with hidden field
     $modelSelect.on('change', function () {
       var value = $(this).val()
       $modelValue.val(value)
+      updateReasoningAvailability()
     })
 
     // Sync text input with hidden field
     $modelText.on('input change', function () {
       var value = $(this).val()
       $modelValue.val(value)
+      updateReasoningAvailability()
     })
+
+    $visionModel.on('input change', updateReasoningAvailability)
 
     // Listen to provider changes
     $provider.on('change', updateFieldVisibility)
