@@ -13,7 +13,7 @@ This plugin for [osTicket](https://github.com/osTicket/osTicket) automatically t
   - Word (.doc, .docx) - via antiword or unzip (if installed)
 - **Intelligent department selection** using AI when multiple matches are found
 - **Multiple API providers**: OpenAI or any OpenAI-compatible API endpoint
-- **Wide model selection**: GPT-5, GPT-4.1, GPT-4o, o-series reasoning models, and custom models
+- **Wide model selection**: GPT-6, GPT-5.6, GPT-5.x, GPT-4.1, GPT-4o, o-series reasoning models, and custom models
 - **Temperature control** for fine-tuning AI response behavior
 - **Internal notes** for each transfer operation, including analyzed file content (optional) and list of ignored files with reasons
 - **Flexible rule configuration** via user-friendly table interface
@@ -44,11 +44,19 @@ This plugin for [osTicket](https://github.com/osTicket/osTicket) automatically t
    - Example: `https://api.example.com/v1/chat/completions`
    - For OpenAI provider, this is set automatically
 
-4. **Model Name** - AI model to use for analysis:
-   - **GPT-5 series** (latest):
-     - `gpt-5.2` - Latest, improved reasoning
+4. **Model Name** - AI model to use for department selection (default: `gpt-6-luna`):
+   - **GPT-6 series**:
+     - `gpt-6.1-sol` / `gpt-6-sol` / `gpt-6-luna` - Latest general models (`gpt-6-luna` is the default)
+     - `gpt-6-astra` - Advanced variant
+   - **GPT-5.6 series**:
+     - `gpt-5.6-sol` / `gpt-5.6-terra` / `gpt-5.6-luna`
+   - **GPT-5.5 / GPT-5.4**:
+     - `gpt-5.5`
+     - `gpt-5.4` / `gpt-5.4-mini` / `gpt-5.4-nano`
+   - **GPT-5 series**:
+     - `gpt-5.2` - Improved reasoning
      - `gpt-5.1` - Coding & agentic tasks
-     - `gpt-5.1-codex` / `gpt-5.1-codex-mini` / `gpt-5.1-codex-max` - Optimized for code
+     - `gpt-5.1-codex` / `gpt-5.1-codex-mini` / `gpt-5.1-codex-max` - Responses API only (not selectable in the plugin UI)
      - `gpt-5-mini` - Fast, 400K context
      - `gpt-5-nano` - Fastest, cheapest
    - **Reasoning models** (o-series, think longer before responding):
@@ -66,12 +74,25 @@ This plugin for [osTicket](https://github.com/osTicket/osTicket) automatically t
      - `gpt-4-turbo` / `gpt-3.5-turbo`
    - For Custom provider: enter any model name manually
 
-5. **Temperature** - controls response randomness (0.0-2.0)
+5. **Reasoning Effort** - reasoning depth for supported models (analysis and image text extraction)
+   - Available levels depend on the selected **Model Name** and **Vision Model** (intersection of both when both support reasoning)
+   - Options: `None`, `Minimal`, `Low`, `Medium`, `High`, `Extra High`, `Maximum` (not every model supports every level)
+   - Supported families include GPT-6, GPT-5.6, GPT-5.5, GPT-5.4, GPT-5.2, GPT-5.1, GPT-5 mini/nano, and o-series models
+   - Default: `None`
+   - Higher levels may increase response time and cost
+
+6. **Vision Model** - optional model for image text extraction (default: `gpt-6-luna`)
+   - Used only for OCR/vision on image attachments; department selection uses **Model Name**
+   - Autocomplete suggests common vision-capable models (`gpt-6.x`, `gpt-5.6`, `gpt-5.5`, `gpt-5.4`, `gpt-4o`, `gpt-4.1`, `o3`, `o1`, and related variants)
+   - Any model name can be entered manually
+
+7. **Temperature** - controls response randomness (0.0-2.0)
    - Lower values = more deterministic responses
    - Higher values = more creative/random responses
    - Default: `0.3` (recommended for classification tasks)
+   - For supported reasoning models, applies only when **Reasoning Effort** is `None`
 
-6. **API Timeout** - maximum wait time for API response (seconds)
+8. **API Timeout** - maximum wait time for API response (seconds)
 
 ### Processing Settings
 
@@ -225,7 +246,7 @@ Log viewing: depends on server configuration (usually `/var/log/apache2/error.lo
 
 1. Check file sizes (don't exceed Max File Size)
 2. For PDF/Word: install pdftotext/antiword/catdoc utilities
-3. For images: verify model supports Vision API (gpt-4o, gpt-4o-mini, or compatible)
+3. For images: set a vision-capable **Vision Model** (e.g. `gpt-6-luna`, `gpt-4o`, `gpt-4o-mini`, or compatible)
 
 ### API Errors
 
@@ -233,7 +254,7 @@ Log viewing: depends on server configuration (usually `/var/log/apache2/error.lo
 - Increase API Timeout if requests are timing out
 - Verify API key correctness
 - For Custom provider: ensure API URL is correct and endpoint is OpenAI-compatible
-- Check Temperature value is within range (0.0-2.0)
+- Check Temperature value is within range (0.0-2.0); for reasoning models, try **Reasoning Effort** `None` if temperature is ignored
 
 ### Manual transfer button not visible
 
